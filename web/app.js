@@ -2,6 +2,12 @@ const $ = (id) => document.getElementById(id);
 
 let autoScanStarted = false;
 let refreshing = false;
+/** @type {"idle" | "starting" | "watching" | "stopping"} */
+let watchPhase = "idle";
+let watchBusy = false;
+let lastWatchSnapshot = null;
+let pollSeconds = 90;
+let deskReady = false;
 
 const ICONS = {
   buy: `<svg class="mini-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 2.2 13.2 8H9.5v5.8H6.5V8H2.8L8 2.2Z"/></svg>`,
@@ -106,10 +112,169 @@ async function api(path, opts) {
   return body;
 }
 
+function relativeAge(iso) {
+  if (!iso) return null;
+  const ms = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return "just now";
+  const sec = Math.round(ms / 1000);
+  if (sec < 5) return "just now";
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  return `${hr}h ago`;
+}
+
+function nextCycleEta(lastCycleAt, intervalSec) {
+  if (!lastCycleAt || !intervalSec) return `every ${intervalSec}s`;
+  const elapsed = (Date.now() - new Date(lastCycleAt).getTime()) / 1000;
+  const remain = Math.max(0, Math.ceil(intervalSec - elapsed));
+  if (remain <= 0) return "cycle due now";
+  return `next ~${remain}s`;
+}
+
+function setBanner(text, tone = "idle") {
+  const note = $("heroNote");
+  if (!note) return;
+  note.textContent = text;
+  note.classList.toggle("is-watch", tone === "watch");
+  note.classList.toggle("is-transition", tone === "transition");
+}
+
+function setWatchStatus(html, visible) {
+  const el = $("watchStatus");
+  if (!el) return;
+  el.innerHTML = html || "";
+  el.hidden = !visible;
+  el.classList.toggle("is-visible", !!visible);
+}
+
+function describeWatchDetail(watch, intervalSec) {
+  if (!watch) return "";
+  const parts = [];
+  const cycles = Number(watch.cycles || 0);
+  parts.push(`<strong>Cycle ${cycles}</strong>`);
+  if (watch.startedAt) {
+    parts.push(`running since ${relativeAge(watch.startedAt)}`);
+  }
+  if (watch.lastCycleAt) {
+    parts.push(`last ${relativeAge(watch.lastCycleAt)}`);
+  } else {
+    parts.push("first cycle in progress");
+  }
+  parts.push(nextCycleEta(watch.lastCycleAt, intervalSec));
+
+  const last = watch.lastResult;
+  if (last) {
+    parts.push(
+      `${last.scanned} scanned · ${last.candidates} actionable · ${last.executed} traded · ${last.redeemed} redeemed`,
+    );
+  }
+  return parts.join(" · ");
+}
+
+function applyWatchPhase(phase, { ready = true, watch = null } = {}) {
+  watchPhase = phase;
+  const toggle = $("watchToggle");
+  const startBtn = $("btnWatch");
+  const stopBtn = $("btnStop");
+  const watchMark = $("watchMark");
+  if (toggle) toggle.dataset.phase = phase;
+
+  const watching = phase === "watching";
+  const starting = phase === "starting";
+  const stopping = phase === "stopping";
+
+  if (watchMark) {
+    watchMark.hidden = !(watching || starting);
+    watchMark.classList.toggle("is-on", watching || starting);
+  }
+
+  if (startBtn) {
+    startBtn.classList.toggle("is-active", watching || starting);
+    if (starting) {
+      startBtn.textContent = "Starting…";
+      startBtn.disabled = true;
+    } else if (watching) {
+      startBtn.textContent = "Watching";
+      startBtn.disabled = true;
+    } else if (stopping) {
+      startBtn.textContent = "Start watch";
+      startBtn.disabled = true;
+    } else {
+      startBtn.textContent = "Start watch";
+      startBtn.disabled = !ready || watchBusy;
+    }
+  }
+
+  if (stopBtn) {
+    if (stopping) {
+      stopBtn.textContent = "Stopping…";
+      stopBtn.disabled = true;
+    } else if (watching || starting) {
+      stopBtn.textContent = "Stop watch";
+      stopBtn.disabled = starting || watchBusy;
+    } else {
+      stopBtn.textContent = "Stop";
+      stopBtn.disabled = true;
+    }
+  }
+
+  if (starting) {
+    setBanner(
+      "Starting watch — first cycle runs now (redeem → scan → size → trade).",
+      "transition",
+    );
+    setWatchStatus(
+      `Loop will keep scanning about every <strong>${intervalLabel(pollSeconds)}</strong>.`,
+      true,
+    );
+    return;
+  }
+
+  if (stopping) {
+    setBanner("Stopping watch — ending the loop after this handoff.", "transition");
+    setWatchStatus(
+      watch
+        ? describeWatchDetail(watch, pollSeconds)
+        : "Watch loop is shutting down.",
+      true,
+    );
+    return;
+  }
+
+  if (watching) {
+    const detail = describeWatchDetail(watch, pollSeconds);
+    const err = watch?.lastError;
+    setBanner(
+      err
+        ? `Watching with error — ${err}`
+        : "Watching markets — loop is live on this desk.",
+      "watch",
+    );
+    setWatchStatus(detail || "Waiting for the first cycle to finish.", true);
+    return;
+  }
+
+  setBanner(
+    ready
+      ? "Ready on Gensyn testnet. Find edges or start watch."
+      : "Finish setup before trading.",
+    "idle",
+  );
+  setWatchStatus("", false);
+}
+
+function intervalLabel(sec) {
+  if (!sec) return "90s";
+  if (sec < 60) return `${sec}s`;
+  const m = Math.round(sec / 60);
+  return m === 1 ? "1 min" : `${m} min`;
+}
+
 function renderChecks(readiness) {
   const el = $("checks");
   const summary = $("readySummary");
-  const note = $("heroNote");
   if (!readiness) {
     el.innerHTML = "";
     summary.textContent = "—";
@@ -118,11 +283,6 @@ function renderChecks(readiness) {
 
   summary.textContent = readiness.ready ? "Ready" : "Blocked";
   summary.className = readiness.ready ? "ready-ok" : "ready-bad";
-  if (!autoScanStarted) {
-    note.textContent = readiness.ready
-      ? "Ready on Gensyn testnet. Find edges or start watch."
-      : "Finish setup before trading.";
-  }
 
   el.innerHTML = (readiness.checks || [])
     .map(
@@ -233,26 +393,37 @@ function applyStatus(s) {
   $("signalMode").className = "";
   $("bankroll").className = "";
 
+  if (typeof s.pollSeconds === "number" && s.pollSeconds > 0) {
+    pollSeconds = s.pollSeconds;
+  }
+
   const mode = s.dryRun ? "Dry run" : "Live";
   const network = s.network || "testnet";
   const watching = !!s.state?.watch?.running;
+  lastWatchSnapshot = s.state?.watch || null;
 
   const liveDot = $("liveDot");
   const netLabel = $("netLabel");
-  const watchMark = $("watchMark");
   if (liveDot) {
     liveDot.className = s.dryRun ? "live-dot dry" : "live-dot";
     liveDot.title = mode;
     liveDot.setAttribute("aria-label", mode);
   }
   if (netLabel) netLabel.textContent = network;
-  if (watchMark) {
-    watchMark.hidden = !watching;
-  }
+
   const ready = s.readiness?.ready;
-  $("btnWatch").disabled = !!watching || !ready;
-  $("btnStop").disabled = !watching;
-  $("btnOnce").disabled = !ready;
+  deskReady = !!ready;
+  $("btnOnce").disabled = !ready || watchBusy;
+
+  // Don't clobber in-flight start/stop transitions from a background poll.
+  if (!watchBusy) {
+    applyWatchPhase(watching ? "watching" : "idle", {
+      ready,
+      watch: lastWatchSnapshot,
+    });
+  } else if (watchPhase === "starting" || watchPhase === "stopping") {
+    applyWatchPhase(watchPhase, { ready, watch: lastWatchSnapshot });
+  }
 
   if (s.balances) {
     $("bankroll").textContent = `${Number(s.balances.token).toLocaleString(undefined, { maximumFractionDigits: 2 })} USDC`;
@@ -297,21 +468,29 @@ async function copyWallet() {
 
 async function ensureScan(ready, hasEdges) {
   if (!ready || hasEdges || autoScanStarted) return;
+  if (watchPhase !== "idle") return;
   autoScanStarted = true;
   if (!$("edgeBody").querySelector("tr:not(.skel-row)")) {
     $("edgeBody").innerHTML = skeletonRows(5);
   }
-  $("heroNote").textContent = "Refreshing market scan…";
+  setBanner("Refreshing market scan…", "transition");
   try {
     const result = await api("/api/scan");
     renderEdges(result.topIntents || []);
     $("scanStats").textContent = `${result.scanned} scanned · ${result.candidates} actionable`;
-    $("heroNote").textContent = result.candidates
-      ? `${result.candidates} actionable edge${result.candidates === 1 ? "" : "s"} found.`
-      : `${result.scanned} markets scanned. No edges cleared the floor yet.`;
+    if (watchPhase === "idle") {
+      setBanner(
+        result.candidates
+          ? `${result.candidates} actionable edge${result.candidates === 1 ? "" : "s"} found.`
+          : `${result.scanned} markets scanned. No edges cleared the floor yet.`,
+        "idle",
+      );
+    }
   } catch (err) {
     autoScanStarted = false;
-    $("heroNote").textContent = err.message || String(err);
+    if (watchPhase === "idle") {
+      setBanner(err.message || String(err), "idle");
+    }
     if (!$("edgeBody").querySelector("a")) {
       $("edgeBody").innerHTML =
         '<tr><td colspan="7" class="empty">Scan failed. Try Find edges.</td></tr>';
@@ -349,7 +528,7 @@ async function refresh({ light = false } = {}) {
     // kick it off in the background.
     void ensureScan(view.ready, view.hasEdges);
   } catch (err) {
-    $("heroNote").textContent = err.message || String(err);
+    setBanner(err.message || String(err), "idle");
   } finally {
     refreshing = false;
     $("btnRefresh")?.classList.remove("spin");
@@ -363,16 +542,49 @@ async function withBusy(btn, fn) {
   if (btn.id === "btnOnce") {
     btn.textContent = "Scanning…";
     $("edgeBody").innerHTML = skeletonRows(5);
+    setBanner("Running one cycle — redeem → scan → size → trade.", "transition");
   }
   try {
     await fn();
   } catch (err) {
     $("errLine").textContent = err.message || String(err);
-    $("heroNote").textContent = err.message || String(err);
+    setBanner(err.message || String(err), "idle");
   } finally {
     btn.textContent = old;
     btn.disabled = prev;
     await refresh();
+  }
+}
+
+async function runWatchTransition(nextPhase, request) {
+  if (watchBusy) return;
+  watchBusy = true;
+  applyWatchPhase(nextPhase, {
+    ready: deskReady,
+    watch: lastWatchSnapshot,
+  });
+  try {
+    const body = await request();
+    lastWatchSnapshot = body.watch || lastWatchSnapshot;
+    const settled = nextPhase === "starting" ? "watching" : "idle";
+    applyWatchPhase(settled, {
+      ready: deskReady,
+      watch: lastWatchSnapshot,
+    });
+    await refresh({ light: true });
+  } catch (err) {
+    $("errLine").textContent = err.message || String(err);
+    applyWatchPhase(nextPhase === "starting" ? "idle" : "watching", {
+      ready: deskReady,
+      watch: lastWatchSnapshot,
+    });
+    setBanner(err.message || String(err), "idle");
+  } finally {
+    watchBusy = false;
+    applyWatchPhase(watchPhase, {
+      ready: deskReady,
+      watch: lastWatchSnapshot,
+    });
   }
 }
 
@@ -382,16 +594,32 @@ $("btnOnce").onclick = () =>
   withBusy($("btnOnce"), async () => {
     const result = await api("/api/once", { method: "POST" });
     renderEdges(result.topIntents || []);
-    $("heroNote").textContent = result.candidates
-      ? `${result.candidates} actionable edge${result.candidates === 1 ? "" : "s"} found.`
-      : "Scan finished. No edges cleared the floor.";
+    setBanner(
+      result.candidates
+        ? `${result.candidates} actionable edge${result.candidates === 1 ? "" : "s"} found.`
+        : "Scan finished. No edges cleared the floor.",
+      "idle",
+    );
   });
 $("btnWatch").onclick = () =>
-  withBusy($("btnWatch"), () => api("/api/watch/start", { method: "POST" }));
+  runWatchTransition("starting", () =>
+    api("/api/watch/start", { method: "POST" }),
+  );
 $("btnStop").onclick = () =>
-  withBusy($("btnStop"), () => api("/api/watch/stop", { method: "POST" }));
+  runWatchTransition("stopping", () =>
+    api("/api/watch/stop", { method: "POST" }),
+  );
 
 $("edgeBody").innerHTML = skeletonRows(5);
 refresh();
 setInterval(() => refresh({ light: true }), 12_000);
 setInterval(() => refresh(), 45_000);
+// Keep watch countdown / “last cycle” copy fresh while watching.
+setInterval(() => {
+  if (watchBusy) return;
+  if (watchPhase !== "watching" || !lastWatchSnapshot) return;
+  applyWatchPhase("watching", {
+    ready: true,
+    watch: lastWatchSnapshot,
+  });
+}, 1_000);

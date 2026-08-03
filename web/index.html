@@ -114,12 +114,37 @@
         </div>
         <div class="actions">
           <button id="btnOnce" class="btn primary">Find edges</button>
-          <button id="btnWatch" class="btn">Start watch</button>
-          <button id="btnStop" class="btn quiet" disabled>Stop</button>
+          <div
+            class="watch-toggle"
+            id="watchToggle"
+            data-phase="idle"
+            aria-live="polite"
+          >
+            <button
+              type="button"
+              id="btnWatch"
+              class="btn watch-start"
+              aria-describedby="watchStatus"
+            >
+              Start watch
+            </button>
+            <button
+              type="button"
+              id="btnStop"
+              class="btn quiet watch-stop"
+              disabled
+              aria-describedby="watchStatus"
+            >
+              Stop
+            </button>
+          </div>
         </div>
       </section>
 
-      <p class="banner" id="heroNote">Loading desk…</p>
+      <div class="status-stack" aria-live="polite">
+        <p class="banner" id="heroNote">Loading desk…</p>
+        <p class="watch-status" id="watchStatus" hidden></p>
+      </div>
 
       <section class="metrics" aria-label="Snapshot" id="metrics">
         <div class="metric">

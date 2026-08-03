@@ -30,6 +30,9 @@ npm run desk           # http://127.0.0.1:4173
 |---------|---------|
 | `npm run desk` | Operator UI + API |
 | `npm run setup-check` | Checklist (API key / signer) |
+| `npm run fund:status` | Sepolia + Gensyn balances |
+| `npm run fund:bridge` | Bridge Sepolia ETH → Gensyn |
+| `npm run fund:faucet` | Claim 1,000 testnet USDC |
 | `npm run once` | One trading cycle |
 | `npm run watch` | Headless loop |
 | `npm run scan` | CLI edge preview |

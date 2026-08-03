@@ -16,7 +16,10 @@
     "balances": "tsx src/cli.ts balances",
     "desk": "tsx src/server.ts",
     "start": "tsx src/server.ts",
-    "setup-check": "tsx scripts/setup-check.ts"
+    "setup-check": "tsx scripts/setup-check.ts",
+    "fund:status": "tsx scripts/fund-status.ts",
+    "fund:bridge": "tsx scripts/fund-bridge.ts",
+    "fund:faucet": "tsx scripts/fund-faucet.ts"
   },
   "engines": {
     "node": ">=22"

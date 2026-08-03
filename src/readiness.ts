@@ -16,7 +16,7 @@ export type Check = {
 export function readinessChecks(): Check[] {
   const cfg = loadConfig();
   const envPath = resolve(root, ".env");
-  const hasEnv = existsSync(envPath);
+  const hasEnvFile = existsSync(envPath);
   const api = Boolean(process.env.DELPHI_API_ACCESS_KEY?.trim());
   const pk =
     process.env.DELPHI_SIGNER_TYPE === "private_key" &&
@@ -29,15 +29,19 @@ export function readinessChecks(): Check[] {
     Boolean(process.env.CDP_WALLET_ADDRESS?.trim());
   const signer = pk || cdp;
   const llm = cfg.llm.enabled;
+  // On Railway/VPS, secrets come from process env — .env file is optional.
+  const hasEnv = hasEnvFile || (api && signer);
 
   return [
     {
       id: "env",
       ok: hasEnv,
-      label: ".env file",
-      detail: hasEnv
-        ? "Found"
-        : "Missing — run: cp .env.example .env and fill keys",
+      label: ".env / platform secrets",
+      detail: hasEnvFile
+        ? "Found .env file"
+        : hasEnv
+          ? "Using platform environment variables"
+          : "Missing — set secrets in .env or Railway variables",
       required: true,
     },
     {

@@ -1,5 +1,11 @@
 const $ = (id) => document.getElementById(id);
 
+const ICONS = {
+  buy: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  sell: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  skip: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
+};
+
 function pct(n) {
   if (n === undefined || n === null || Number.isNaN(n)) return "—";
   const sign = n > 0 ? "+" : "";
@@ -52,7 +58,7 @@ function renderChecks(readiness) {
     : "Finish setup to unlock trading";
   summary.className = readiness.ready ? "ready-ok" : "ready-bad";
   note.textContent = readiness.ready
-    ? "Setup looks good. Scan markets or leave watch mode running."
+    ? "Setup looks good. Scan markets or leave watch mode running on testnet."
     : "Complete the checklist below, then come back to find edges.";
 
   el.innerHTML = (readiness.checks || [])
@@ -60,7 +66,7 @@ function renderChecks(readiness) {
       return `<li class="step ${c.ok ? "ok" : ""}">
         <div class="dot" aria-hidden="true"></div>
         <div>
-          <strong>${escapeHtml(c.label)}${c.required ? "" : ""}</strong>
+          <strong>${escapeHtml(c.label)}</strong>
           <span>${escapeHtml(c.detail)}</span>
         </div>
       </li>`;
@@ -76,7 +82,11 @@ function renderEdges(intents = []) {
   const shown = (actionable.length ? actionable : intents).slice(0, 8);
 
   if (!shown.length) {
-    el.innerHTML = `<div class="empty-card"><strong>No opportunities yet</strong><span>Tap “Find edges now” to scan open Delphi markets.</span></div>`;
+    el.innerHTML = `<div class="empty">
+      <img src="/empty-edges.svg" width="72" height="72" alt="" />
+      <strong>No opportunities yet</strong>
+      <span>Tap Find edges now to scan open Delphi markets.</span>
+    </div>`;
     $("bestEdge").textContent = "—";
     return;
   }
@@ -89,12 +99,11 @@ function renderEdges(intents = []) {
   el.innerHTML = shown
     .map((i) => {
       const actionableRow = !i.skipReason;
-      const badgeClass = actionableRow ? i.side : "skip";
-      const badge = actionableRow ? i.side : "skip";
+      const kind = actionableRow ? i.side : "skip";
       return `<article class="edge-card">
         <div class="edge-top">
           <p class="edge-question"><a href="${escapeAttr(i.url)}" target="_blank" rel="noreferrer">${escapeHtml(i.question)}</a></p>
-          <span class="edge-badge ${badgeClass}">${escapeHtml(badge)}</span>
+          <span class="badge ${kind}">${ICONS[kind] || ""}${escapeHtml(kind)}</span>
         </div>
         <div class="edge-meta">
           <div><span class="lbl">Outcome</span><span class="val">${escapeHtml(i.outcome)}</span></div>
@@ -102,7 +111,7 @@ function renderEdges(intents = []) {
           <div><span class="lbl">Our view</span><span class="val">${pct(i.blendedProb)}</span></div>
           <div><span class="lbl">Edge</span><span class="val ${i.edgeAfterCost >= 0 ? "pos" : "neg"}">${pct(i.edgeAfterCost)}</span></div>
         </div>
-        ${i.skipReason ? `<p class="stat-sub">${escapeHtml(i.skipReason)}</p>` : `<p class="stat-sub pos">Ready to trade this edge</p>`}
+        ${i.skipReason ? `<p class="sub">${escapeHtml(i.skipReason)}</p>` : `<p class="sub pos">Ready to trade this edge</p>`}
       </article>`;
     })
     .join("");
@@ -126,7 +135,7 @@ function renderPositions(positions = [], error) {
           ? `<a href="${escapeAttr(p.url)}" target="_blank" rel="noreferrer">${escapeHtml(p.question)}</a>`
           : escapeHtml(p.question)
         : escapeHtml(p.market);
-      return `<div class="pos-row"><strong>${title}</strong><span class="stat-sub">${escapeHtml(p.outcome ?? `#${p.outcomeIdx}`)} · ${Number(p.sharesHuman).toFixed(3)} shares · ${escapeHtml(p.marketStatus)}</span></div>`;
+      return `<div class="pos-row"><strong>${title}</strong><span class="sub">${escapeHtml(p.outcome ?? `#${p.outcomeIdx}`)} · ${Number(p.sharesHuman).toFixed(3)} shares · ${escapeHtml(p.marketStatus)}</span></div>`;
     })
     .join("");
 }
@@ -140,7 +149,7 @@ function renderJournal(entries = []) {
   el.innerHTML = entries
     .slice(0, 30)
     .map((e) => {
-      return `<div class="feed-item"><div class="t">${escapeHtml(e.ts)} · ${escapeHtml(e.event || "event")}</div><strong>${escapeHtml(e.question || e.market || "")}</strong><div class="stat-sub">${escapeHtml(e.reason || e.tx || e.outcome || "")}</div></div>`;
+      return `<div class="feed-item"><div class="t">${escapeHtml(e.ts)} · ${escapeHtml(e.event || "event")}</div><strong>${escapeHtml(e.question || e.market || "")}</strong><div class="sub">${escapeHtml(e.reason || e.tx || e.outcome || "")}</div></div>`;
     })
     .join("");
 }
@@ -160,7 +169,7 @@ function applyStatus(s) {
     : "Signals: external odds + anti-herd";
 
   const mode = $("modeChip");
-  mode.textContent = s.dryRun ? "Dry run" : "Live";
+  mode.textContent = s.dryRun ? "Dry run" : "Live · testnet";
   mode.className = s.dryRun ? "chip warn" : "chip live";
 
   const watching = s.state?.watch?.running;
@@ -184,12 +193,9 @@ function applyStatus(s) {
   }
 
   const last = s.state?.watch?.lastResult || s.state?.lastScan;
-  const lastAt = s.state?.watch?.lastCycleAt || s.state?.lastScanAt;
   $("scanStats").textContent = last
     ? `${last.scanned} markets · ${last.candidates} actionable`
-    : lastAt
-      ? `Last scan ${fmtTime(lastAt)}`
-      : "No scan yet";
+    : "No scan yet";
 
   $("errLine").textContent = s.state?.watch?.lastError || "";
   renderChecks(s.readiness);
@@ -210,20 +216,23 @@ async function refresh() {
   renderPositions(positions.positions || [], positions.error);
   $("health").textContent = `${shortAddr(status.wallet)} · synced`;
   void health;
+  void fmtTime;
 }
 
 async function withBusy(btn, fn) {
   const prev = btn.disabled;
   btn.disabled = true;
-  const old = btn.textContent;
-  if (btn.id === "btnOnce") btn.textContent = "Scanning…";
+  const old = btn.innerHTML;
+  if (btn.id === "btnOnce") {
+    btn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2" opacity="0.35"/><path d="M12 4a8 8 0 0 1 8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Scanning…`;
+  }
   try {
     await fn();
   } catch (err) {
     $("errLine").textContent = err.message || String(err);
     $("heroNote").textContent = err.message || String(err);
   } finally {
-    btn.textContent = old;
+    btn.innerHTML = old;
     btn.disabled = prev;
     await refresh();
   }

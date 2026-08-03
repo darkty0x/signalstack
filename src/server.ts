@@ -7,7 +7,7 @@ import { getClient } from "./client.js";
 import { readBalances } from "./balances.js";
 import { listOpenPositions } from "./positions.js";
 import { readinessSummary } from "./readiness.js";
-import { runCycle, startWatch, stopWatch } from "./agent/loop.js";
+import { runCycle, runScan, startWatch, stopWatch } from "./agent/loop.js";
 import { getState, readJournal, readLogs, summarize } from "./state.js";
 import { log } from "./util/log.js";
 
@@ -137,6 +137,18 @@ const server = createServer(async (req, res) => {
 
     if (path === "/api/logs" && method === "GET") {
       return json(res, 200, { lines: readLogs(120) });
+    }
+
+    if (path === "/api/scan" && (method === "GET" || method === "POST")) {
+      const ready = readinessSummary();
+      if (!ready.ready) {
+        return json(res, 400, {
+          error: "Not ready — fix checklist first",
+          readiness: ready,
+        });
+      }
+      const result = await runScan(loadConfig());
+      return json(res, 200, summarize(result));
     }
 
     if (path === "/api/once" && method === "POST") {

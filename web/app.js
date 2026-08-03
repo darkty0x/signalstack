@@ -1,5 +1,7 @@
 const $ = (id) => document.getElementById(id);
 
+let autoScanStarted = false;
+
 function pct(n) {
   if (n === undefined || n === null || Number.isNaN(n)) return "—";
   const sign = n > 0 ? "+" : "";
@@ -20,6 +22,17 @@ function escapeHtml(s) {
 
 function escapeAttr(s) {
   return escapeHtml(s).replaceAll('"', "&quot;");
+}
+
+function sideIcon(side) {
+  const s = String(side || "").toLowerCase();
+  if (s === "buy") {
+    return `<svg class="side-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 2.2 13.2 8H9.5v5.8H6.5V8H2.8L8 2.2Z"/></svg>`;
+  }
+  if (s === "sell") {
+    return `<svg class="side-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 13.8 2.8 8H6.5V2.2h3V8h3.7L8 13.8Z"/></svg>`;
+  }
+  return "";
 }
 
 async function api(path, opts) {
@@ -65,30 +78,30 @@ function renderChecks(readiness) {
 
 function renderEdges(intents = []) {
   const body = $("edgeBody");
-  const actionable = intents.filter((i) => !i.skipReason);
-  const shown = (actionable.length ? actionable : intents).slice(0, 12);
+  const ranked = [...intents].sort(
+    (a, b) => Math.abs(b.edgeAfterCost) - Math.abs(a.edgeAfterCost),
+  );
+  const shown = ranked.slice(0, 16);
 
   if (!shown.length) {
     body.innerHTML =
-      '<tr><td colspan="7" class="empty">No opportunities yet. Run Find edges.</td></tr>';
+      '<tr><td colspan="7" class="empty">No markets yet. Run Find edges.</td></tr>';
     $("bestEdge").textContent = "—";
     return;
   }
 
-  const best = [...shown].sort(
-    (a, b) => Math.abs(b.edgeAfterCost) - Math.abs(a.edgeAfterCost),
-  )[0];
-  $("bestEdge").textContent = pct(best?.edgeAfterCost);
+  $("bestEdge").textContent = pct(shown[0]?.edgeAfterCost);
 
   body.innerHTML = shown
     .map((i) => {
       const status = i.skipReason
         ? escapeHtml(i.skipReason)
         : "Action";
+      const side = String(i.side || "").toLowerCase();
       return `<tr>
         <td><a href="${escapeAttr(i.url)}" target="_blank" rel="noreferrer">${escapeHtml(i.question)}</a></td>
         <td>${escapeHtml(i.outcome)}</td>
-        <td>${escapeHtml(i.side)}</td>
+        <td><span class="side-cell">${sideIcon(side)}<span>${escapeHtml(side)}</span></span></td>
         <td class="mono">${pct(i.marketProb)}</td>
         <td class="mono">${pct(i.blendedProb)}</td>
         <td class="mono">${pct(i.edgeAfterCost)}</td>
@@ -179,7 +192,8 @@ function applyStatus(s) {
 
   $("errLine").textContent = s.state?.watch?.lastError || "";
   renderChecks(s.readiness);
-  if (last?.topIntents) renderEdges(last.topIntents);
+  if (last?.topIntents?.length) renderEdges(last.topIntents);
+  return { ready, hasEdges: Boolean(last?.topIntents?.length) };
 }
 
 async function copyWallet() {
@@ -200,6 +214,27 @@ async function copyWallet() {
   }, 1800);
 }
 
+async function ensureScan(ready, hasEdges) {
+  if (!ready || hasEdges || autoScanStarted) return;
+  autoScanStarted = true;
+  $("edgeBody").innerHTML =
+    '<tr><td colspan="7" class="empty">Scanning markets…</td></tr>';
+  $("heroNote").textContent = "Scanning Delphi markets…";
+  try {
+    const result = await api("/api/scan");
+    renderEdges(result.topIntents || []);
+    $("scanStats").textContent = `${result.scanned} scanned · ${result.candidates} actionable`;
+    $("heroNote").textContent = result.candidates
+      ? `${result.candidates} actionable edge${result.candidates === 1 ? "" : "s"} found.`
+      : `${result.scanned} markets scanned. No edges cleared the floor yet.`;
+  } catch (err) {
+    autoScanStarted = false;
+    $("heroNote").textContent = err.message || String(err);
+    $("edgeBody").innerHTML =
+      '<tr><td colspan="7" class="empty">Scan failed. Try Find edges.</td></tr>';
+  }
+}
+
 async function refresh() {
   const [status, journal, logs, health, positions] = await Promise.all([
     api("/api/status"),
@@ -208,12 +243,13 @@ async function refresh() {
     api("/api/health"),
     api("/api/positions"),
   ]);
-  applyStatus(status);
+  const view = applyStatus(status);
   renderJournal(journal.entries || []);
   renderLogs(logs.lines || []);
   renderPositions(positions.positions || [], positions.error);
   $("health").textContent = shortAddr(status.wallet);
   void health;
+  await ensureScan(view.ready, view.hasEdges);
 }
 
 async function withBusy(btn, fn) {

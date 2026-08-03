@@ -22,11 +22,39 @@
   </head>
   <body>
     <header class="top">
-      <a class="brand" href="/" aria-label="SignalStack home">
-        <img class="mark" src="/logo.svg" width="26" height="26" alt="" />
-        <span class="wordmark">SignalStack</span>
-      </a>
-      <p class="status-line" id="statusLine">…</p>
+      <div class="top-inner">
+        <div class="top-left">
+          <a class="brand" href="/" aria-label="SignalStack home">
+            <img class="mark" src="/logo.svg" width="32" height="32" alt="" />
+            <span class="wordmark">SignalStack</span>
+          </a>
+          <nav class="nav" aria-label="Primary">
+            <a class="nav-link is-active" href="/">Desk</a>
+            <a
+              class="nav-link"
+              href="https://testnet.delphi.fyi/"
+              target="_blank"
+              rel="noreferrer"
+              >Markets</a
+            >
+            <a
+              class="nav-link"
+              href="https://testnet.delphi.fyi/leaderboard"
+              target="_blank"
+              rel="noreferrer"
+              >Leaderboard</a
+            >
+            <a
+              class="nav-link"
+              href="https://docs.delphi.fyi/"
+              target="_blank"
+              rel="noreferrer"
+              >Docs</a
+            >
+          </nav>
+        </div>
+        <p class="status-line" id="statusLine">…</p>
+      </div>
     </header>
 
     <main class="wrap">
@@ -98,9 +126,7 @@
             </thead>
             <tbody id="edgeBody">
               <tr>
-                <td colspan="7" class="empty">
-                  No opportunities yet. Run Find edges.
-                </td>
+                <td colspan="7" class="empty">Scanning markets…</td>
               </tr>
             </tbody>
           </table>
@@ -148,9 +174,34 @@
     </main>
 
     <footer class="foot">
-      <span>SignalStack · Delphi Agent Arena</span>
-      <button id="btnRefresh" class="text-btn">Refresh</button>
-      <span id="health">…</span>
+      <div class="foot-inner">
+        <div class="foot-brand">
+          <img class="mark" src="/logo.svg" width="28" height="28" alt="" />
+          <div>
+            <strong>SignalStack</strong>
+            <p>Delphi Agent Arena · Gensyn testnet</p>
+          </div>
+        </div>
+        <nav class="foot-nav" aria-label="Footer">
+          <a href="/">Desk</a>
+          <a href="https://testnet.delphi.fyi/" target="_blank" rel="noreferrer"
+            >Markets</a
+          >
+          <a
+            href="https://testnet.delphi.fyi/leaderboard"
+            target="_blank"
+            rel="noreferrer"
+            >Leaderboard</a
+          >
+          <a href="https://docs.delphi.fyi/" target="_blank" rel="noreferrer"
+            >Docs</a
+          >
+          <button id="btnRefresh" class="text-btn" type="button">
+            Refresh
+          </button>
+        </nav>
+        <span class="foot-meta mono" id="health">…</span>
+      </div>
     </footer>
 
     <script src="/app.js" type="module"></script>

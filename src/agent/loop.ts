@@ -14,6 +14,35 @@ import { executeIntents } from "./execute.js";
 import { observeMarkets } from "./observe.js";
 import { redeemAndLiquidate } from "./redeem.js";
 
+export async function runScan(cfg: AgentConfig): Promise<CycleResult> {
+  const client = getClient(cfg);
+  log("info", "scan start", {
+    agent: cfg.agentName,
+    network: cfg.network,
+    minEdge: cfg.minEdge,
+  });
+
+  const markets = await observeMarkets(client, cfg);
+  const intents = await decideTrades(client, markets, cfg);
+  const actionable = intents.filter((i) => !i.skipReason && i.shares > 0n);
+
+  const result: CycleResult = {
+    scanned: markets.length,
+    candidates: actionable.length,
+    intents,
+    executed: 0,
+    skipped: intents.length - actionable.length,
+    redeemed: 0,
+  };
+
+  setLastScan(result);
+  log("info", "scan done", {
+    scanned: result.scanned,
+    candidates: result.candidates,
+  });
+  return result;
+}
+
 export async function runCycle(cfg: AgentConfig): Promise<CycleResult> {
   const client = getClient(cfg);
   log("info", "cycle start", {

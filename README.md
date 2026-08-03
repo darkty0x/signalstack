@@ -24,6 +24,8 @@ npm run setup-check    # verifies readiness without printing secrets
 npm run desk           # http://127.0.0.1:4173
 ```
 
+**Live desk:** https://signalstack.up.railway.app
+
 | Command | Purpose |
 |---------|---------|
 | `npm run desk` | Operator UI + API |
@@ -37,11 +39,13 @@ Keep `SIGNALSTACK_DRY_RUN=1` until Aug 10. Full checklist: [`docs/runbook.md`](d
 
 ## Desk
 
-- LIVE / DRY RUN mode pill  
-- Bankroll + ETH  
-- Edge board (market / blend / edge after cost)  
-- Run cycle · Start/Stop watch  
-- Journal + logs  
+Product control room for the competition agent:
+
+- Big brand hero + one primary action: **Find edges now**
+- Bankroll / best edge / floor at a glance
+- Opportunity cards (not a dense spreadsheet)
+- Setup checklist only when blocked
+- Journal/logs tucked under Advanced
 
 ## Non-negotiables
 

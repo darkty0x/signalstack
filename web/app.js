@@ -178,7 +178,7 @@ function renderPositions(positions = [], error) {
     return;
   }
   if (!positions.length) {
-    el.innerHTML = `<p class="empty-inline">No open positions.</p>`;
+    el.innerHTML = `<p class="empty-inline">No market shares yet. Bankroll sits as USDC until an edge clears the floor (or a practice buy).</p>`;
     return;
   }
   el.innerHTML = positions

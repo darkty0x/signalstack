@@ -142,7 +142,9 @@ function renderChecks(readiness) {
 function renderEdges(intents = []) {
   const body = $("edgeBody");
   const ranked = [...intents].sort(
-    (a, b) => Math.abs(b.edgeAfterCost) - Math.abs(a.edgeAfterCost),
+    (a, b) =>
+      Math.abs(b.edge ?? b.edgeAfterCost) -
+      Math.abs(a.edge ?? a.edgeAfterCost),
   );
   const shown = ranked.slice(0, 16);
 
@@ -154,20 +156,21 @@ function renderEdges(intents = []) {
     return;
   }
 
-  const best = shown[0]?.edgeAfterCost;
+  const best = shown[0]?.edge ?? shown[0]?.edgeAfterCost;
   $("bestEdge").textContent = pct(best);
   $("bestEdge").className = pctClass(best);
 
   body.innerHTML = shown
     .map((i) => {
       const st = statusMeta(i.skipReason);
+      const edge = i.edge ?? i.edgeAfterCost;
       return `<tr>
         <td class="market-cell"><a href="${escapeAttr(i.url)}" target="_blank" rel="noreferrer">${escapeHtml(i.question)}</a></td>
         <td>${outcomeChip(i.outcome)}</td>
         <td>${sideChip(i.side)}</td>
         <td class="mono">${pctPlain(i.marketProb)}</td>
         <td class="mono">${pctPlain(i.blendedProb)}</td>
-        <td class="mono ${pctClass(i.edgeAfterCost)}">${pct(i.edgeAfterCost)}</td>
+        <td class="mono ${pctClass(edge)}">${pct(edge)}</td>
         <td><span class="status-pill ${st.kind}">${ICONS[st.icon] || ""}<span>${escapeHtml(st.label)}</span></span></td>
       </tr>`;
     })

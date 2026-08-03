@@ -51,15 +51,18 @@ function edgeAfterImpact(args: {
 
   const quotedCps = Number(args.fullTokensIn) / 1e6 / sharesHuman;
   const spot = args.spotPrice && args.spotPrice > 0 ? args.spotPrice : null;
+  let impactPct = 0;
   if (spot) {
-    const impactPct = Math.max(0, (quotedCps - spot) / spot);
-    return args.edge - impactPct - slip;
+    impactPct = Math.max(0, (quotedCps - spot) / spot);
+  } else {
+    const probeCps = Number(args.probeTokensIn) / Number(args.probeShares);
+    const fullCps = Number(args.fullTokensIn) / Number(args.fullShares);
+    impactPct = probeCps > 0 ? Math.max(0, fullCps / probeCps - 1) : 0;
   }
-
-  const probeCps = Number(args.probeTokensIn) / Number(args.probeShares);
-  const fullCps = Number(args.fullTokensIn) / Number(args.fullShares);
-  const impactLift = probeCps > 0 ? Math.max(0, fullCps / probeCps - 1) : 0;
-  return args.edge - args.marketProb * impactLift - slip;
+  // Thin DPM books can quote absurd impact; cap the haircut.
+  if (!Number.isFinite(impactPct)) impactPct = 0.25;
+  impactPct = Math.min(0.25, impactPct);
+  return args.edge - impactPct - slip;
 }
 
 export async function decideTrades(

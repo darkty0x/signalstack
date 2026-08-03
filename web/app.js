@@ -65,7 +65,9 @@ function statusMeta(skipReason) {
   if (key === "hold" || key.includes("weak")) {
     return { label: "Hold", kind: "mute", icon: "hold" };
   }
-  if (key === "preview") return { label: "Watch", kind: "wait", icon: "watch" };
+  if (key === "illiquid" || key.includes("illiquid")) {
+    return { label: "Illiquid", kind: "mute", icon: "shares" };
+  }
   return { label: key.slice(0, 18), kind: "mute", icon: "hold" };
 }
 

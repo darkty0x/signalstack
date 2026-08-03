@@ -98,29 +98,46 @@ export async function decideTrades(
       )?.spotPrice;
 
       if (view.edge <= -cfg.minEdge && held > 0n) {
-        const quote = await client.quoteSell({
-          marketAddress: market.id,
-          outcomeIdx: view.outcomeIdx,
-          sharesIn: held,
-        });
-        const minOut =
-          (quote.tokensOut * BigInt(10_000 - cfg.slippageBps)) / 10_000n;
-        intents.push({
-          market,
-          view,
-          side: "sell",
-          shares: held,
-          tokensEstimate: quote.tokensOut,
-          minTokensOut: minOut,
-          edgeAfterCost: view.edge,
-          sizeFraction: 0,
-        });
-        actions += 1;
-        log("info", "sell candidate", {
-          question: market.question,
-          outcome: view.label,
-          edge: view.edge,
-        });
+        try {
+          const quote = await client.quoteSell({
+            marketAddress: market.id,
+            outcomeIdx: view.outcomeIdx,
+            sharesIn: held,
+          });
+          const minOut =
+            (quote.tokensOut * BigInt(10_000 - cfg.slippageBps)) / 10_000n;
+          intents.push({
+            market,
+            view,
+            side: "sell",
+            shares: held,
+            tokensEstimate: quote.tokensOut,
+            minTokensOut: minOut,
+            edgeAfterCost: view.edge,
+            sizeFraction: 0,
+          });
+          actions += 1;
+          log("info", "sell candidate", {
+            question: market.question,
+            outcome: view.label,
+            edge: view.edge,
+          });
+        } catch (err) {
+          intents.push({
+            market,
+            view,
+            side: "sell",
+            shares: 0n,
+            tokensEstimate: 0n,
+            edgeAfterCost: view.edge,
+            sizeFraction: 0,
+            skipReason: "illiquid",
+          });
+          log("warn", "sell quote failed", {
+            question: market.question,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
         continue;
       }
 
@@ -172,39 +189,66 @@ export async function decideTrades(
         continue;
       }
 
-      const probe = await client.quoteBuy({
-        marketAddress: market.id,
-        outcomeIdx: view.outcomeIdx,
-        sharesOut: cfg.probeShares,
-      });
-      const probeCost = Number(probe.tokensIn) / 1e6;
-      if (!(probeCost > 0)) continue;
+      try {
+        const probe = await client.quoteBuy({
+          marketAddress: market.id,
+          outcomeIdx: view.outcomeIdx,
+          sharesOut: cfg.probeShares,
+        });
+        const probeCost = Number(probe.tokensIn) / 1e6;
+        if (!(probeCost > 0)) {
+          intents.push({
+            market,
+            view,
+            side: "buy",
+            shares: 0n,
+            tokensEstimate: 0n,
+            edgeAfterCost: view.edge,
+            sizeFraction: frac,
+            skipReason: "illiquid",
+          });
+          continue;
+        }
 
-      const targetUsdc = Math.min(bankroll * frac, bankroll * 0.95);
-      const shareUnits = Math.max(0.2, targetUsdc / probeCost);
-      const sharesOut = BigInt(Math.floor(shareUnits * 1e18));
+        const targetUsdc = Math.min(bankroll * frac, bankroll * 0.95);
+        const shareUnits = Math.max(0.2, targetUsdc / probeCost);
+        const sharesOut = BigInt(Math.floor(shareUnits * 1e18));
 
-      const quote = await client.quoteBuy({
-        marketAddress: market.id,
-        outcomeIdx: view.outcomeIdx,
-        sharesOut,
-      });
+        const quote = await client.quoteBuy({
+          marketAddress: market.id,
+          outcomeIdx: view.outcomeIdx,
+          sharesOut,
+        });
 
-      const edgeAfterCost = edgeAfterImpact({
-        edge: view.edge,
-        marketProb: view.marketProb,
-        spotPrice,
-        probeTokensIn: probe.tokensIn,
-        probeShares: cfg.probeShares,
-        fullTokensIn: quote.tokensIn,
-        fullShares: sharesOut,
-        slippageBps: cfg.slippageBps,
-      });
+        const edgeAfterCost = edgeAfterImpact({
+          edge: view.edge,
+          marketProb: view.marketProb,
+          spotPrice,
+          probeTokensIn: probe.tokensIn,
+          probeShares: cfg.probeShares,
+          fullTokensIn: quote.tokensIn,
+          fullShares: sharesOut,
+          slippageBps: cfg.slippageBps,
+        });
 
-      const maxTokensIn =
-        (quote.tokensIn * BigInt(10_000 + cfg.slippageBps)) / 10_000n;
+        const maxTokensIn =
+          (quote.tokensIn * BigInt(10_000 + cfg.slippageBps)) / 10_000n;
 
-      if (edgeAfterCost < cfg.minEdge) {
+        if (edgeAfterCost < cfg.minEdge) {
+          intents.push({
+            market,
+            view,
+            side: "buy",
+            shares: sharesOut,
+            tokensEstimate: quote.tokensIn,
+            maxTokensIn,
+            edgeAfterCost,
+            sizeFraction: frac,
+            skipReason: "impact",
+          });
+          continue;
+        }
+
         intents.push({
           market,
           view,
@@ -214,32 +258,34 @@ export async function decideTrades(
           maxTokensIn,
           edgeAfterCost,
           sizeFraction: frac,
-          skipReason: "impact",
         });
-        continue;
+        actions += 1;
+        bankroll = Math.max(0, bankroll - Number(quote.tokensIn) / 1e6);
+
+        log("info", "buy candidate", {
+          question: market.question,
+          outcome: view.label,
+          edge: view.edge,
+          edgeAfterCost,
+          frac,
+          reasons: view.reasons.slice(0, 3),
+        });
+      } catch (err) {
+        intents.push({
+          market,
+          view,
+          side: "buy",
+          shares: 0n,
+          tokensEstimate: 0n,
+          edgeAfterCost: view.edge,
+          sizeFraction: frac,
+          skipReason: "illiquid",
+        });
+        log("warn", "buy quote failed", {
+          question: market.question,
+          error: err instanceof Error ? err.message.slice(0, 160) : String(err),
+        });
       }
-
-      intents.push({
-        market,
-        view,
-        side: "buy",
-        shares: sharesOut,
-        tokensEstimate: quote.tokensIn,
-        maxTokensIn,
-        edgeAfterCost,
-        sizeFraction: frac,
-      });
-      actions += 1;
-      bankroll = Math.max(0, bankroll - Number(quote.tokensIn) / 1e6);
-
-      log("info", "buy candidate", {
-        question: market.question,
-        outcome: view.label,
-        edge: view.edge,
-        edgeAfterCost,
-        frac,
-        reasons: view.reasons.slice(0, 3),
-      });
     }
   }
 

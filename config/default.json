@@ -1,0 +1,31 @@
+{
+  "agentName": "SignalStack",
+  "wallet": "0x67df2320690a7870c20105662d525a567254b7d5",
+  "network": "testnet",
+  "dryRun": true,
+  "deadlineIso": "2026-08-24T23:59:59.000Z",
+  "minEdge": 0.06,
+  "maxBetFraction": 0.12,
+  "kellyFraction": 0.35,
+  "maxTradesPerCycle": 3,
+  "pollSeconds": 90,
+  "marketLimit": 40,
+  "probeShares": "1000000000000000000",
+  "slippageBps": 150,
+  "minSettlementHours": 1,
+  "maxSettlementHours": 504,
+  "categories": ["politics", "economics", "sports", "crypto", "technology", "culture", "miscellaneous"],
+  "weights": {
+    "external": 0.55,
+    "llm": 0.3,
+    "antiHerd": 0.15
+  },
+  "antiHerd": {
+    "crowdGap": 0.12,
+    "fadeStrength": 0.5
+  },
+  "external": {
+    "minSimilarity": 0.42,
+    "maxResults": 8
+  }
+}

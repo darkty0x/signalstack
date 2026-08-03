@@ -1,0 +1,35 @@
+{
+  "name": "signalstack",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "SignalStack — Delphi Agent Arena trading agent (edge stack)",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "cli": "tsx src/cli.ts",
+    "once": "tsx src/cli.ts once",
+    "watch": "tsx src/cli.ts watch",
+    "scan": "tsx src/cli.ts scan",
+    "redeem": "tsx src/cli.ts redeem",
+    "balances": "tsx src/cli.ts balances",
+    "desk": "tsx src/server.ts",
+    "start": "tsx src/server.ts",
+    "setup-check": "tsx scripts/setup-check.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@gensyn-ai/gensyn-delphi-sdk": "^2.0.0",
+    "dotenv": "^16.4.0",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

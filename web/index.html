@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SignalStack Desk</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="atmosphere" aria-hidden="true"></div>
+    <header class="top">
+      <div class="brand">
+        <div class="mark" aria-hidden="true"></div>
+        <div>
+          <p class="eyebrow">Delphi Agent Arena</p>
+          <h1>SignalStack</h1>
+        </div>
+      </div>
+      <div class="top-meta" id="topMeta">
+        <span class="pill" id="modePill">…</span>
+        <span class="pill ghost" id="netPill">…</span>
+        <span class="pill ghost" id="watchPill">IDLE</span>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel hero-panel">
+        <div class="hero-grid">
+          <div>
+            <p class="label">Wallet</p>
+            <p class="mono truncate" id="wallet">—</p>
+            <p class="label mt">Bankroll</p>
+            <p class="stat" id="bankroll">—</p>
+            <p class="sub" id="ethBal">ETH —</p>
+          </div>
+          <div>
+            <p class="label">Edge floor</p>
+            <p class="stat" id="minEdge">—</p>
+            <p class="label mt">Deadline</p>
+            <p class="mono" id="deadline">—</p>
+            <p class="sub" id="llmState">LLM off</p>
+          </div>
+          <div>
+            <p class="label">Last cycle</p>
+            <p class="stat small" id="lastCycle">—</p>
+            <p class="label mt">Scanned / edge hits</p>
+            <p class="stat small" id="scanStats">—</p>
+            <p class="sub danger" id="errLine"></p>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="btnOnce" class="btn primary">Run cycle</button>
+          <button id="btnWatch" class="btn">Start watch</button>
+          <button id="btnStop" class="btn ghost" disabled>Stop</button>
+          <button id="btnRefresh" class="btn ghost">Refresh</button>
+        </div>
+      </section>
+
+      <section class="panel" id="readyPanel">
+        <div class="panel-head">
+          <h2>Go-live checklist</h2>
+          <p class="sub" id="readySummary">Checking…</p>
+        </div>
+        <div class="checks" id="checks"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Edge board</h2>
+          <p class="sub">External → LLM → anti-herd → quote-aware size</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Market</th>
+                <th>Outcome</th>
+                <th>Side</th>
+                <th>Market</th>
+                <th>Blend</th>
+                <th>Edge</th>
+                <th>After cost</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="edgeBody">
+              <tr>
+                <td colspan="8" class="empty">Run a cycle to populate edges.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Positions</h2>
+          <p class="sub">Open inventory on the registered wallet</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Market</th>
+                <th>Outcome</th>
+                <th>Shares</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="posBody">
+              <tr>
+                <td colspan="4" class="empty">No open positions.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="split">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Journal</h2>
+          </div>
+          <div class="feed" id="journal"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Logs</h2>
+          </div>
+          <div class="feed mono" id="logs"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <span>P&amp;L wins the arena — this desk keeps the machine perfect.</span>
+      <span id="health">health…</span>
+    </footer>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

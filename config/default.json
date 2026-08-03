@@ -18,11 +18,19 @@
   "weights": {
     "external": 0.55,
     "llm": 0.3,
-    "antiHerd": 0.15
+    "antiHerd": 0.15,
+    "prior": 0.35
   },
   "antiHerd": {
     "crowdGap": 0.12,
     "fadeStrength": 0.5
+  },
+  "prior": {
+    "extremeHigh": 0.88,
+    "extremeLow": 0.12,
+    "targetHigh": 0.78,
+    "targetLow": 0.22,
+    "fadeStrength": 0.55
   },
   "external": {
     "minSimilarity": 0.42,

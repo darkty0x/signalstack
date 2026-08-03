@@ -4,6 +4,7 @@ import { clampProb } from "../util/math.js";
 import { antiHerdSignals } from "./antiHerd.js";
 import { externalSignals } from "./external.js";
 import { llmSignals } from "./llm.js";
+import { priorSignals } from "./prior.js";
 
 function weightedMean(
   parts: Array<{ p: number; w: number; conf: number }>,
@@ -23,8 +24,8 @@ function weightedMean(
 }
 
 /**
- * Priority when signals disagree: external > calibrated LLM > anti-herd fade.
- * Market implied is the baseline only when nothing else fires.
+ * Priority when signals disagree: external > calibrated LLM > anti-herd >
+ * extreme-book prior. Market implied alone only when nothing else fires.
  */
 export async function blendMarket(
   market: ObservedMarket,
@@ -34,6 +35,7 @@ export async function blendMarket(
   const needLlm = external.length === 0 || cfg.llm.enabled;
   const llm = needLlm ? await llmSignals(market, cfg) : [];
   const anti = antiHerdSignals(market, external, cfg);
+  const prior = external.length === 0 ? priorSignals(market, cfg) : [];
 
   const byOutcome = (rows: SignalEstimate[], idx: number) =>
     rows.filter((r) => r.outcomeIdx === idx);
@@ -43,6 +45,7 @@ export async function blendMarket(
       ...byOutcome(external, outcome.idx),
       ...byOutcome(llm, outcome.idx),
       ...byOutcome(anti, outcome.idx),
+      ...byOutcome(prior, outcome.idx),
     ];
 
     const parts: Array<{ p: number; w: number; conf: number; reason: string }> =
@@ -72,6 +75,14 @@ export async function blendMarket(
         reason: s.note,
       });
     }
+    for (const s of byOutcome(prior, outcome.idx)) {
+      parts.push({
+        p: s.probability,
+        w: cfg.weights.prior,
+        conf: s.confidence,
+        reason: s.note,
+      });
+    }
 
     // If no independent signal, stay near market (no trade incentive).
     if (parts.length === 0) {
@@ -79,7 +90,7 @@ export async function blendMarket(
         p: outcome.marketProb,
         w: 1,
         conf: 0.2,
-        reason: "no external/llm signal — use market",
+        reason: "no external/llm/prior signal — use market",
       });
     }
 

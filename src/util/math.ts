@@ -12,14 +12,16 @@ export function tokenize(text: string): string[] {
     .filter((t) => t.length > 2);
 }
 
-/** Jaccard similarity over token sets. */
+/** Jaccard + coverage similarity over token sets. */
 export function similarity(a: string, b: string): number {
   const A = new Set(tokenize(a));
   const B = new Set(tokenize(b));
   if (A.size === 0 || B.size === 0) return 0;
   let inter = 0;
   for (const t of A) if (B.has(t)) inter += 1;
-  return inter / (A.size + B.size - inter);
+  const jaccard = inter / (A.size + B.size - inter);
+  const cover = inter / Math.min(A.size, B.size);
+  return Math.max(jaccard, cover * 0.9);
 }
 
 /** Half-Kelly style sizing for binary/multi outcome buy of underpriced share. */

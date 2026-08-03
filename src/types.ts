@@ -33,6 +33,7 @@ export type SignalSource =
   | "external"
   | "llm"
   | "antiHerd"
+  | "prior"
   | "market"
   | "blend";
 

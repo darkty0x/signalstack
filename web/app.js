@@ -19,8 +19,9 @@ const ICONS = {
 
 function pct(n) {
   if (n === undefined || n === null || Number.isNaN(n)) return "—";
+  if (Math.abs(n) < 5e-4) return "0%";
   const sign = n > 0 ? "+" : "";
-  return `${sign}${(n * 100).toFixed(1)}%`;
+  return `${sign}${(n * 100).toFixed(2)}%`;
 }
 
 function pctPlain(n) {
@@ -221,8 +222,8 @@ function applyStatus(s) {
     ? `Ends ${new Date(s.deadlineIso).toLocaleDateString()}`
     : "Deadline —";
   $("llmState").textContent = s.llmEnabled
-    ? "External + LLM + anti-herd"
-    : "External + anti-herd";
+    ? "External + LLM + prior"
+    : "External + prior + anti-herd";
   $("signalMode").textContent = s.llmEnabled ? "Full stack" : "Core stack";
   $("signalMode").className = "";
   $("bankroll").className = "";

@@ -11,6 +11,7 @@ export type SignalWeights = {
   external: number;
   llm: number;
   antiHerd: number;
+  prior: number;
 };
 
 export type AgentConfig = {
@@ -33,6 +34,13 @@ export type AgentConfig = {
   categories: string[];
   weights: SignalWeights;
   antiHerd: { crowdGap: number; fadeStrength: number };
+  prior: {
+    extremeHigh: number;
+    extremeLow: number;
+    targetHigh: number;
+    targetLow: number;
+    fadeStrength: number;
+  };
   external: { minSimilarity: number; maxResults: number };
   llm: {
     enabled: boolean;
@@ -83,9 +91,28 @@ export function loadConfig(): AgentConfig {
     process.env.SIGNALSTACK_WALLET?.trim() || raw.wallet,
   );
   const apiKey = process.env.OPENAI_API_KEY?.trim();
+  const weights = {
+    external: raw.weights?.external ?? 0.55,
+    llm: raw.weights?.llm ?? 0.3,
+    antiHerd: raw.weights?.antiHerd ?? 0.15,
+    prior: (raw.weights as { prior?: number } | undefined)?.prior ?? 0.35,
+  };
+  const prior = (raw as { prior?: AgentConfig["prior"] }).prior ?? {
+    extremeHigh: 0.88,
+    extremeLow: 0.12,
+    targetHigh: 0.78,
+    targetLow: 0.22,
+    fadeStrength: 0.55,
+  };
 
   return {
     ...raw,
+    weights,
+    prior,
+    external: {
+      minSimilarity: raw.external?.minSimilarity ?? 0.3,
+      maxResults: raw.external?.maxResults ?? 8,
+    },
     wallet,
     network: (process.env.DELPHI_NETWORK as "testnet" | "mainnet") || raw.network,
     dryRun: envBool("SIGNALSTACK_DRY_RUN", raw.dryRun),

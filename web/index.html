@@ -8,10 +8,10 @@
       name="description"
       content="SignalStack competition desk for Delphi Agent Arena on Gensyn testnet."
     />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/logo.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://api.fontshare.com" />
     <link
-      href="https://api.fontshare.com/v2/css?f[]=clash-display@600,700&f[]=satoshi@400,500,700&display=swap"
+      href="https://api.fontshare.com/v2/css?f[]=clash-display@500,600&f[]=satoshi@400,500,700&display=swap"
       rel="stylesheet"
     />
     <link
@@ -22,14 +22,11 @@
   </head>
   <body>
     <header class="top">
-      <a class="wordmark" href="/" aria-label="SignalStack home">
-        <span class="wm-strong">Signal</span><span class="wm-rest">Stack</span>
+      <a class="brand" href="/" aria-label="SignalStack home">
+        <img class="mark" src="/logo.svg" width="28" height="28" alt="" />
+        <span class="wordmark">SignalStack</span>
       </a>
-      <nav class="top-nav" aria-label="Status">
-        <span class="pill" id="modeChip">…</span>
-        <span class="pill quiet" id="netChip">testnet</span>
-        <span class="pill quiet" id="watchChip">Idle</span>
-      </nav>
+      <p class="status-line" id="statusLine">…</p>
     </header>
 
     <main class="wrap">
@@ -67,8 +64,8 @@
           <span class="s" id="deadline">Deadline —</span>
         </div>
         <div class="metric">
-          <span class="k">Wallet</span>
-          <strong class="mono short" id="walletShort">—</strong>
+          <span class="k">Signals</span>
+          <strong id="signalMode">—</strong>
           <span class="s" id="llmState">External + anti-herd</span>
         </div>
       </section>
@@ -125,7 +122,13 @@
             <h2>Identity</h2>
             <p>Registered wallet</p>
           </div>
-          <p class="mono full" id="wallet">—</p>
+          <div class="addr-row">
+            <code class="mono full" id="wallet">—</code>
+            <button type="button" class="btn tiny" id="btnCopyWallet">
+              Copy
+            </button>
+          </div>
+          <p class="s" id="copyNote"></p>
           <p class="s danger" id="errLine"></p>
         </section>
       </section>

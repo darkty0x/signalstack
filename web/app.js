@@ -82,18 +82,16 @@ function renderEdges(intents = []) {
 
   body.innerHTML = shown
     .map((i) => {
-      const sideClass = i.side === "buy" ? "side-buy" : "side-sell";
-      const edgeClass = i.edgeAfterCost >= 0 ? "pos" : "neg";
       const status = i.skipReason
         ? escapeHtml(i.skipReason)
-        : '<span class="side-buy">Action</span>';
+        : "Action";
       return `<tr>
         <td><a href="${escapeAttr(i.url)}" target="_blank" rel="noreferrer">${escapeHtml(i.question)}</a></td>
         <td>${escapeHtml(i.outcome)}</td>
-        <td class="${sideClass}">${escapeHtml(i.side)}</td>
+        <td>${escapeHtml(i.side)}</td>
         <td class="mono">${pct(i.marketProb)}</td>
         <td class="mono">${pct(i.blendedProb)}</td>
-        <td class="${edgeClass}">${pct(i.edgeAfterCost)}</td>
+        <td class="mono">${pct(i.edgeAfterCost)}</td>
         <td>${status}</td>
       </tr>`;
     })
@@ -142,8 +140,8 @@ function renderLogs(lines = []) {
 }
 
 function applyStatus(s) {
-  $("wallet").textContent = s.wallet || "—";
-  $("walletShort").textContent = shortAddr(s.wallet);
+  const wallet = s.wallet || "";
+  $("wallet").textContent = wallet || "—";
   $("minEdge").textContent = pct(s.minEdge);
   $("deadline").textContent = s.deadlineIso
     ? `Ends ${new Date(s.deadlineIso).toLocaleDateString()}`
@@ -151,17 +149,14 @@ function applyStatus(s) {
   $("llmState").textContent = s.llmEnabled
     ? "External + LLM + anti-herd"
     : "External + anti-herd";
-  $("netChip").textContent = s.network || "testnet";
+  $("signalMode").textContent = s.llmEnabled ? "Full stack" : "Core stack";
 
-  const mode = $("modeChip");
-  mode.textContent = s.dryRun ? "Dry run" : "Live";
-  mode.className = s.dryRun ? "pill warn" : "pill live";
+  const mode = s.dryRun ? "Dry run" : "Live";
+  const network = s.network || "testnet";
+  const watch = s.state?.watch?.running ? "Watching" : "Idle";
+  $("statusLine").textContent = `${mode} · ${network} · ${watch}`;
 
   const watching = s.state?.watch?.running;
-  const watch = $("watchChip");
-  watch.textContent = watching ? "Watching" : "Idle";
-  watch.className = watching ? "pill live" : "pill quiet";
-
   const ready = s.readiness?.ready;
   $("btnWatch").disabled = !!watching || !ready;
   $("btnStop").disabled = !watching;
@@ -185,6 +180,24 @@ function applyStatus(s) {
   $("errLine").textContent = s.state?.watch?.lastError || "";
   renderChecks(s.readiness);
   if (last?.topIntents) renderEdges(last.topIntents);
+}
+
+async function copyWallet() {
+  const value = $("wallet").textContent.trim();
+  const note = $("copyNote");
+  if (!value || value === "—") {
+    note.textContent = "No wallet to copy.";
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(value);
+    note.textContent = "Copied.";
+  } catch {
+    note.textContent = "Copy failed — select the address manually.";
+  }
+  setTimeout(() => {
+    note.textContent = "";
+  }, 1800);
 }
 
 async function refresh() {
@@ -220,6 +233,7 @@ async function withBusy(btn, fn) {
   }
 }
 
+$("btnCopyWallet").onclick = () => copyWallet();
 $("btnRefresh").onclick = () => refresh();
 $("btnOnce").onclick = () =>
   withBusy($("btnOnce"), async () => {

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Minimal signal-bar monogram: three ascending bars, single ink fill -->
+  <rect x="5" y="20" width="5" height="7" rx="1" fill="#0B0D10"/>
+  <rect x="13.5" y="12" width="5" height="15" rx="1" fill="#0B0D10"/>
+  <rect x="22" y="4" width="5" height="23" rx="1" fill="#0B0D10"/>
+</svg>

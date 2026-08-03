@@ -655,7 +655,9 @@ main {
   border-radius: 5px;
 }
 
-@keyframes floatSoft {
+#setupSection[hidden] {
+  display: none !important;
+}
   0%,
   100% {
     transform: translateY(0);

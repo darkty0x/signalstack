@@ -72,8 +72,8 @@ a:hover {
 
 .wordmark {
   font-family: var(--display);
-  font-weight: 600;
-  font-size: 1.25rem;
+  font-weight: 500;
+  font-size: 1.2rem;
   letter-spacing: -0.03em;
   line-height: 1;
 }
@@ -81,7 +81,7 @@ a:hover {
 .status-line {
   margin: 0;
   color: var(--mute);
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 500;
   letter-spacing: 0.01em;
 }
@@ -101,18 +101,18 @@ a:hover {
 
 .page-head h1 {
   margin: 0;
-  font-family: var(--display);
-  font-size: clamp(2.2rem, 5vw, 3rem);
-  letter-spacing: -0.035em;
-  line-height: 1;
+  font-family: var(--font);
+  font-size: clamp(2rem, 4.2vw, 2.55rem);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
   font-weight: 500;
 }
 
 .purpose {
-  margin: 0.7rem 0 0;
+  margin: 0.65rem 0 0;
   max-width: 40rem;
   color: var(--ink-soft);
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   line-height: 1.55;
 }
 
@@ -128,9 +128,9 @@ a:hover {
   border: 1px solid var(--line-strong);
   background: var(--surface);
   color: var(--ink);
-  border-radius: 999px;
-  padding: 0.78rem 1.05rem;
-  font: 600 0.95rem var(--font);
+  border-radius: 8px;
+  padding: 0.72rem 1rem;
+  font: 500 1rem var(--font);
   cursor: pointer;
 }
 
@@ -199,23 +199,23 @@ a:hover {
 
 .metric .k {
   color: var(--mute);
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .metric strong {
-  font-family: var(--display);
-  font-size: 1.65rem;
-  letter-spacing: -0.025em;
+  font-family: var(--font);
+  font-size: 1.55rem;
+  letter-spacing: -0.02em;
   font-weight: 500;
 }
 
 .metric .s,
 .s {
   color: var(--mute);
-  font-size: 0.95rem;
+  font-size: 1rem;
 }
 
 .block {
@@ -233,16 +233,16 @@ a:hover {
 
 .block-head h2 {
   margin: 0;
-  font-family: var(--display);
-  font-size: 1.35rem;
-  letter-spacing: -0.025em;
+  font-family: var(--font);
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
   font-weight: 500;
 }
 
 .block-head p {
   margin: 0;
   color: var(--mute);
-  font-size: 0.95rem;
+  font-size: 1rem;
 }
 
 .checks {
@@ -309,12 +309,12 @@ a:hover {
 
 .data th {
   text-align: left;
-  font-size: 0.78rem;
-  letter-spacing: 0.07em;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--mute);
-  font-weight: 600;
-  padding: 0.5rem 0.55rem;
+  font-weight: 500;
+  padding: 0.55rem 0.55rem;
   border-bottom: 1px solid var(--line-strong);
 }
 
@@ -337,8 +337,8 @@ a:hover {
 
 .full {
   word-break: break-all;
-  font-size: 0.95rem;
-  line-height: 1.45;
+  font-size: 1.02rem;
+  line-height: 1.5;
 }
 
 .addr-row {

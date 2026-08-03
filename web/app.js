@@ -8,6 +8,13 @@ const ICONS = {
   sell: `<svg class="mini-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 13.8 2.8 8H6.5V2.2h3V8h3.7L8 13.8Z"/></svg>`,
   yes: `<svg class="mini-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.4 11.5 3.2 8.3l1.1-1.1 2.1 2.1 5.2-5.2 1.1 1.1-6.3 6.3Z"/></svg>`,
   no: `<svg class="mini-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="m4.2 4.2 1.1-1.1L8 5.8l2.7-2.7 1.1 1.1L9.1 6.9l2.7 2.7-1.1 1.1L8 8l-2.7 2.7-1.1-1.1 2.7-2.7-2.7-2.7Z"/></svg>`,
+  floor: `<svg class="mini-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M2.5 11.2h11v1.4h-11v-1.4Zm5.3-7.4h1.4v4.1l1.8-1.8 1 1-3.5 3.5-3.5-3.5 1-1 1.8 1.8V3.8Z"/></svg>`,
+  ready: `<svg class="mini-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.4 11.5 3.2 8.3l1.1-1.1 2.1 2.1 5.2-5.2 1.1 1.1-6.3 6.3Z"/></svg>`,
+  impact: `<svg class="mini-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.8 13.4 13H2.6L8 1.8Zm0 3.4L4.9 11.4h6.2L8 5.2Zm-.7 6.6h1.4v1.4H7.3v-1.4Z"/></svg>`,
+  hold: `<svg class="mini-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M5.2 3.2h1.5v9.6H5.2V3.2Zm4.1 0h1.5v9.6H9.3V3.2Z"/></svg>`,
+  shares: `<svg class="mini-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M3 12.5h10v1.3H3v-1.3Zm1.2-2.4h1.6V11H4.2v-.9Zm2.5-2.2h1.6v3.1H6.7V7.9Zm2.5-2.3h1.6v5.4H9.2V5.6Zm2.5-2.4h1.6v7.8h-1.6V3.2Z"/></svg>`,
+  tiny: `<svg class="mini-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 2.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11Zm0 1.4a4.1 4.1 0 1 0 0 8.2 4.1 4.1 0 0 0 0-8.2Zm-.7 1.8h1.4v2.1H10v1.3H7.3V5.7Z"/></svg>`,
+  watch: `<svg class="mini-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 3.2A7.2 7.2 0 0 0 1.4 8 7.2 7.2 0 0 0 8 12.8 7.2 7.2 0 0 0 14.6 8 7.2 7.2 0 0 0 8 3.2Zm0 1.5A4.2 4.2 0 0 1 12.9 8 4.2 4.2 0 0 1 8 11.3 4.2 4.2 0 0 1 3.1 8 4.2 4.2 0 0 1 8 4.7Z"/></svg>`,
 };
 
 function pct(n) {
@@ -40,39 +47,42 @@ function escapeAttr(s) {
 }
 
 function statusMeta(skipReason) {
-  if (!skipReason) return { label: "Ready", kind: "go" };
+  if (!skipReason) return { label: "Ready", kind: "go", icon: "ready" };
   const key = String(skipReason);
   if (key === "below_floor" || /edge .+ < min/.test(key)) {
-    return { label: "Below floor", kind: "wait" };
+    return { label: "Below floor", kind: "wait", icon: "floor" };
   }
   if (key === "impact" || key.includes("impact")) {
-    return { label: "Impact", kind: "wait" };
+    return { label: "Impact", kind: "wait", icon: "impact" };
   }
   if (key === "too_small" || key.includes("size")) {
-    return { label: "Too small", kind: "mute" };
+    return { label: "Too small", kind: "mute", icon: "tiny" };
   }
   if (key === "no_shares" || key.includes("inventory")) {
-    return { label: "No shares", kind: "mute" };
+    return { label: "No shares", kind: "mute", icon: "shares" };
   }
   if (key === "hold" || key.includes("weak")) {
-    return { label: "Hold", kind: "mute" };
+    return { label: "Hold", kind: "mute", icon: "hold" };
   }
-  if (key === "preview") return { label: "Watch", kind: "wait" };
-  return { label: key.slice(0, 18), kind: "mute" };
+  if (key === "preview") return { label: "Watch", kind: "wait", icon: "watch" };
+  return { label: key.slice(0, 18), kind: "mute", icon: "hold" };
 }
 
 function outcomeChip(label) {
   const raw = String(label || "");
   const low = raw.toLowerCase();
   const kind = low === "yes" ? "yes" : low === "no" ? "no" : "neutral";
+  const text =
+    kind === "yes" ? "Yes" : kind === "no" ? "No" : raw;
   const icon = ICONS[kind] || "";
-  return `<span class="chip out-${kind}">${icon}<span>${escapeHtml(raw)}</span></span>`;
+  return `<span class="chip out-${kind}">${icon}<span>${escapeHtml(text)}</span></span>`;
 }
 
 function sideChip(side) {
   const s = String(side || "").toLowerCase();
+  const label = s === "buy" ? "Buy" : s === "sell" ? "Sell" : s;
   const icon = ICONS[s] || "";
-  return `<span class="chip side-${s}">${icon}<span>${escapeHtml(s)}</span></span>`;
+  return `<span class="chip side-${s}">${icon}<span>${escapeHtml(label)}</span></span>`;
 }
 
 function skeletonRows(n = 5) {
@@ -155,7 +165,7 @@ function renderEdges(intents = []) {
         <td class="mono">${pctPlain(i.marketProb)}</td>
         <td class="mono">${pctPlain(i.blendedProb)}</td>
         <td class="mono ${pctClass(i.edgeAfterCost)}">${pct(i.edgeAfterCost)}</td>
-        <td><span class="status-pill ${st.kind}">${escapeHtml(st.label)}</span></td>
+        <td><span class="status-pill ${st.kind}">${ICONS[st.icon] || ""}<span>${escapeHtml(st.label)}</span></span></td>
       </tr>`;
     })
     .join("");
@@ -219,10 +229,20 @@ function applyStatus(s) {
 
   const mode = s.dryRun ? "Dry run" : "Live";
   const network = s.network || "testnet";
-  const watch = s.state?.watch?.running ? "Watching" : "Idle";
-  $("statusLine").textContent = `${mode} · ${network} · ${watch}`;
+  const watching = !!s.state?.watch?.running;
 
-  const watching = s.state?.watch?.running;
+  const liveDot = $("liveDot");
+  const netLabel = $("netLabel");
+  const watchMark = $("watchMark");
+  if (liveDot) {
+    liveDot.className = s.dryRun ? "live-dot dry" : "live-dot";
+    liveDot.title = mode;
+    liveDot.setAttribute("aria-label", mode);
+  }
+  if (netLabel) netLabel.textContent = network;
+  if (watchMark) {
+    watchMark.hidden = !watching;
+  }
   const ready = s.readiness?.ready;
   $("btnWatch").disabled = !!watching || !ready;
   $("btnStop").disabled = !watching;

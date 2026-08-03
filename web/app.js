@@ -3,7 +3,7 @@ const $ = (id) => document.getElementById(id);
 function pct(n) {
   if (n === undefined || n === null || Number.isNaN(n)) return "—";
   const sign = n > 0 ? "+" : "";
-  return `${sign}${(n * 100).toFixed(2)}%`;
+  return `${sign}${(n * 100).toFixed(1)}%`;
 }
 
 function shortAddr(a) {
@@ -14,16 +14,6 @@ function shortAddr(a) {
 function fmtTime(iso) {
   if (!iso) return "—";
   return new Date(iso).toLocaleString();
-}
-
-async function api(path, opts) {
-  const res = await fetch(path, {
-    headers: { "content-type": "application/json" },
-    ...opts,
-  });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error || res.statusText);
-  return body;
 }
 
 function escapeHtml(s) {
@@ -37,85 +27,106 @@ function escapeAttr(s) {
   return escapeHtml(s).replaceAll('"', "&quot;");
 }
 
+async function api(path, opts) {
+  const res = await fetch(path, {
+    headers: { "content-type": "application/json" },
+    ...opts,
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || res.statusText);
+  return body;
+}
+
 function renderChecks(readiness) {
   const el = $("checks");
   const summary = $("readySummary");
+  const note = $("heroNote");
   if (!readiness) {
     el.innerHTML = "";
     summary.textContent = "—";
     return;
   }
+
   summary.textContent = readiness.ready
-    ? "Ready for dry-run cycles"
-    : "Blocked — finish required items";
-  summary.className = readiness.ready
-    ? "sub ready-ok"
-    : "sub ready-bad";
+    ? "Ready to scan"
+    : "Finish setup to unlock trading";
+  summary.className = readiness.ready ? "ready-ok" : "ready-bad";
+  note.textContent = readiness.ready
+    ? "Setup looks good. Scan markets or leave watch mode running."
+    : "Complete the checklist below, then come back to find edges.";
 
   el.innerHTML = (readiness.checks || [])
     .map((c) => {
-      return `<div class="check ${c.ok ? "ok" : ""}">
-        <div class="dot"></div>
+      return `<li class="step ${c.ok ? "ok" : ""}">
+        <div class="dot" aria-hidden="true"></div>
         <div>
-          <p class="title">${escapeHtml(c.label)}${c.required ? " *" : ""}</p>
-          <p class="detail">${escapeHtml(c.detail)}</p>
+          <strong>${escapeHtml(c.label)}${c.required ? "" : ""}</strong>
+          <span>${escapeHtml(c.detail)}</span>
         </div>
-      </div>`;
+      </li>`;
     })
     .join("");
+
+  $("setupSection").hidden = readiness.ready;
 }
 
 function renderEdges(intents = []) {
-  const body = $("edgeBody");
-  if (!intents.length) {
-    body.innerHTML =
-      '<tr><td colspan="8" class="empty">No edges yet. Run a cycle.</td></tr>';
+  const el = $("edgeCards");
+  const actionable = intents.filter((i) => !i.skipReason);
+  const shown = (actionable.length ? actionable : intents).slice(0, 8);
+
+  if (!shown.length) {
+    el.innerHTML = `<div class="empty-card"><strong>No opportunities yet</strong><span>Tap “Find edges now” to scan open Delphi markets.</span></div>`;
+    $("bestEdge").textContent = "—";
     return;
   }
-  body.innerHTML = intents
+
+  const best = [...shown].sort(
+    (a, b) => Math.abs(b.edgeAfterCost) - Math.abs(a.edgeAfterCost),
+  )[0];
+  $("bestEdge").textContent = pct(best?.edgeAfterCost);
+
+  el.innerHTML = shown
     .map((i) => {
-      const edgeCls = i.edgeAfterCost >= 0 ? "pos" : "neg";
-      const status = i.skipReason
-        ? `<span class="sub">${escapeHtml(i.skipReason)}</span>`
-        : `<span class="pos">ACTION</span>`;
-      return `<tr>
-        <td><a href="${escapeAttr(i.url)}" target="_blank" rel="noreferrer">${escapeHtml(i.question)}</a></td>
-        <td>${escapeHtml(i.outcome)}</td>
-        <td class="side-${i.side}">${i.side.toUpperCase()}</td>
-        <td class="mono">${pct(i.marketProb)}</td>
-        <td class="mono">${pct(i.blendedProb)}</td>
-        <td class="${i.edge >= 0 ? "pos" : "neg"}">${pct(i.edge)}</td>
-        <td class="${edgeCls}">${pct(i.edgeAfterCost)}</td>
-        <td>${status}</td>
-      </tr>`;
+      const actionableRow = !i.skipReason;
+      const badgeClass = actionableRow ? i.side : "skip";
+      const badge = actionableRow ? i.side : "skip";
+      return `<article class="edge-card">
+        <div class="edge-top">
+          <p class="edge-question"><a href="${escapeAttr(i.url)}" target="_blank" rel="noreferrer">${escapeHtml(i.question)}</a></p>
+          <span class="edge-badge ${badgeClass}">${escapeHtml(badge)}</span>
+        </div>
+        <div class="edge-meta">
+          <div><span class="lbl">Outcome</span><span class="val">${escapeHtml(i.outcome)}</span></div>
+          <div><span class="lbl">Market</span><span class="val">${pct(i.marketProb)}</span></div>
+          <div><span class="lbl">Our view</span><span class="val">${pct(i.blendedProb)}</span></div>
+          <div><span class="lbl">Edge</span><span class="val ${i.edgeAfterCost >= 0 ? "pos" : "neg"}">${pct(i.edgeAfterCost)}</span></div>
+        </div>
+        ${i.skipReason ? `<p class="stat-sub">${escapeHtml(i.skipReason)}</p>` : `<p class="stat-sub pos">Ready to trade this edge</p>`}
+      </article>`;
     })
     .join("");
 }
 
 function renderPositions(positions = [], error) {
-  const body = $("posBody");
+  const el = $("posList");
   if (error && !positions.length) {
-    body.innerHTML = `<tr><td colspan="4" class="empty">${escapeHtml(error)}</td></tr>`;
+    el.innerHTML = `<div class="empty-inline">${escapeHtml(error)}</div>`;
     return;
   }
   if (!positions.length) {
-    body.innerHTML =
-      '<tr><td colspan="4" class="empty">No open positions.</td></tr>';
+    el.innerHTML = `<div class="empty-inline">No open positions.</div>`;
     return;
   }
-  body.innerHTML = positions
+  el.innerHTML = positions
+    .slice(0, 12)
     .map((p) => {
-      const q = p.question
+      const title = p.question
         ? p.url
           ? `<a href="${escapeAttr(p.url)}" target="_blank" rel="noreferrer">${escapeHtml(p.question)}</a>`
           : escapeHtml(p.question)
-        : `<span class="mono">${escapeHtml(p.market)}</span>`;
-      return `<tr>
-        <td>${q}</td>
-        <td>${escapeHtml(p.outcome ?? `#${p.outcomeIdx}`)}</td>
-        <td class="mono">${Number(p.sharesHuman).toFixed(4)}</td>
-        <td>${escapeHtml(p.marketStatus)}</td>
-      </tr>`;
+        : escapeHtml(p.market);
+      return `<div class="pos-row"><strong>${title}</strong><span class="stat-sub">${escapeHtml(p.outcome ?? `#${p.outcomeIdx}`)} · ${Number(p.sharesHuman).toFixed(3)} shares · ${escapeHtml(p.marketStatus)}</span></div>`;
     })
     .join("");
 }
@@ -123,45 +134,39 @@ function renderPositions(positions = [], error) {
 function renderJournal(entries = []) {
   const el = $("journal");
   if (!entries.length) {
-    el.innerHTML = '<div class="sub">No journal entries yet.</div>';
+    el.innerHTML = `<div class="empty-inline">Nothing recorded yet.</div>`;
     return;
   }
   el.innerHTML = entries
-    .slice(0, 40)
+    .slice(0, 30)
     .map((e) => {
-      const title = e.event || "event";
-      const q = e.question || e.market || "";
-      return `<div class="feed-item"><div class="t">${escapeHtml(e.ts)} · ${escapeHtml(title)}</div><div>${escapeHtml(q)}</div><div class="sub">${escapeHtml(e.reason || e.tx || e.outcome || "")}</div></div>`;
+      return `<div class="feed-item"><div class="t">${escapeHtml(e.ts)} · ${escapeHtml(e.event || "event")}</div><strong>${escapeHtml(e.question || e.market || "")}</strong><div class="stat-sub">${escapeHtml(e.reason || e.tx || e.outcome || "")}</div></div>`;
     })
     .join("");
 }
 
 function renderLogs(lines = []) {
-  $("logs").textContent = lines.slice(0, 60).join("\n") || "No logs yet.";
+  $("logs").textContent = lines.slice(0, 50).join("\n") || "No logs yet.";
 }
 
 function applyStatus(s) {
   $("wallet").textContent = s.wallet || "—";
-  $("wallet").title = s.wallet || "";
   $("minEdge").textContent = pct(s.minEdge);
   $("deadline").textContent = s.deadlineIso
-    ? new Date(s.deadlineIso).toLocaleString()
-    : "—";
+    ? `Ends ${new Date(s.deadlineIso).toLocaleDateString()}`
+    : "Deadline —";
   $("llmState").textContent = s.llmEnabled
-    ? "LLM calibration on"
-    : "LLM off · external + anti-herd active";
+    ? "Signals: external + LLM + anti-herd"
+    : "Signals: external odds + anti-herd";
 
-  const dry = s.dryRun;
-  const mode = $("modePill");
-  mode.textContent = dry ? "DRY RUN" : "LIVE";
-  mode.className = dry ? "pill warn" : "pill live";
-
-  $("netPill").textContent = (s.network || "testnet").toUpperCase();
+  const mode = $("modeChip");
+  mode.textContent = s.dryRun ? "Dry run" : "Live";
+  mode.className = s.dryRun ? "chip warn" : "chip live";
 
   const watching = s.state?.watch?.running;
-  const watch = $("watchPill");
-  watch.textContent = watching ? "WATCHING" : "IDLE";
-  watch.className = watching ? "pill live" : "pill ghost";
+  const watch = $("watchChip");
+  watch.textContent = watching ? "Watching" : "Idle";
+  watch.className = watching ? "chip live" : "chip soft";
 
   const ready = s.readiness?.ready;
   $("btnWatch").disabled = !!watching || !ready;
@@ -169,23 +174,24 @@ function applyStatus(s) {
   $("btnOnce").disabled = !ready;
 
   if (s.balances) {
-    $("bankroll").textContent = `${Number(s.balances.token).toLocaleString()} USDC`;
-    $("ethBal").textContent = `ETH ${Number(s.balances.eth).toFixed(5)}`;
+    $("bankroll").textContent = `${Number(s.balances.token).toLocaleString(undefined, { maximumFractionDigits: 2 })} USDC`;
+    $("ethBal").textContent = `Gas ${Number(s.balances.eth).toFixed(5)} ETH`;
   } else {
-    $("bankroll").textContent = s.apiReady ? "—" : "API key missing";
+    $("bankroll").textContent = s.apiReady ? "—" : "Setup needed";
     $("ethBal").textContent = s.balanceError
-      ? s.balanceError.slice(0, 80)
-      : "Connect signer in .env for live balances";
+      ? s.balanceError.slice(0, 70)
+      : "Connect wallet signer for balances";
   }
 
   const last = s.state?.watch?.lastResult || s.state?.lastScan;
   const lastAt = s.state?.watch?.lastCycleAt || s.state?.lastScanAt;
-  $("lastCycle").textContent = fmtTime(lastAt);
   $("scanStats").textContent = last
-    ? `${last.scanned} scanned · ${last.candidates} actionable · ${last.executed} exec`
-    : "—";
-  $("errLine").textContent = s.state?.watch?.lastError || "";
+    ? `${last.scanned} markets · ${last.candidates} actionable`
+    : lastAt
+      ? `Last scan ${fmtTime(lastAt)}`
+      : "No scan yet";
 
+  $("errLine").textContent = s.state?.watch?.lastError || "";
   renderChecks(s.readiness);
   if (last?.topIntents) renderEdges(last.topIntents);
 }
@@ -202,17 +208,22 @@ async function refresh() {
   renderJournal(journal.entries || []);
   renderLogs(logs.lines || []);
   renderPositions(positions.positions || [], positions.error);
-  $("health").textContent = `ok · ${shortAddr(status.wallet)} · ${health.ts}`;
+  $("health").textContent = `${shortAddr(status.wallet)} · synced`;
+  void health;
 }
 
 async function withBusy(btn, fn) {
   const prev = btn.disabled;
   btn.disabled = true;
+  const old = btn.textContent;
+  if (btn.id === "btnOnce") btn.textContent = "Scanning…";
   try {
     await fn();
   } catch (err) {
     $("errLine").textContent = err.message || String(err);
+    $("heroNote").textContent = err.message || String(err);
   } finally {
+    btn.textContent = old;
     btn.disabled = prev;
     await refresh();
   }
@@ -223,6 +234,9 @@ $("btnOnce").onclick = () =>
   withBusy($("btnOnce"), async () => {
     const result = await api("/api/once", { method: "POST" });
     renderEdges(result.topIntents || []);
+    $("heroNote").textContent = result.candidates
+      ? `Found ${result.candidates} actionable edge${result.candidates === 1 ? "" : "s"}.`
+      : "Scan finished — no edges cleared the floor this round.";
   });
 $("btnWatch").onclick = () =>
   withBusy($("btnWatch"), () => api("/api/watch/start", { method: "POST" }));

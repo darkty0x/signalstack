@@ -9,7 +9,7 @@ import {
   setLastScan,
   setWatchRunning,
 } from "../state.js";
-import { decideTrades } from "./decide.js";
+import { decideTrades, previewTrades } from "./decide.js";
 import { executeIntents } from "./execute.js";
 import { observeMarkets } from "./observe.js";
 import { redeemAndLiquidate } from "./redeem.js";
@@ -23,8 +23,8 @@ export async function runScan(cfg: AgentConfig): Promise<CycleResult> {
   });
 
   const markets = await observeMarkets(client, cfg);
-  const intents = await decideTrades(client, markets, cfg);
-  const actionable = intents.filter((i) => !i.skipReason && i.shares > 0n);
+  const intents = await previewTrades(markets, cfg);
+  const actionable = intents.filter((i) => !i.skipReason);
 
   const result: CycleResult = {
     scanned: markets.length,

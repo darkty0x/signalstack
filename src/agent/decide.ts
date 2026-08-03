@@ -133,7 +133,7 @@ export async function decideTrades(
           tokensEstimate: 0n,
           edgeAfterCost: view.edge,
           sizeFraction: 0,
-          skipReason: `edge ${view.edge.toFixed(3)} < min ${cfg.minEdge}`,
+          skipReason: "below_floor",
         });
         continue;
       }
@@ -147,7 +147,7 @@ export async function decideTrades(
           tokensEstimate: 0n,
           edgeAfterCost: view.edge,
           sizeFraction: 0,
-          skipReason: held > 0n ? "edge weak for sell" : "no inventory to sell",
+          skipReason: held > 0n ? "hold" : "no_shares",
         });
         continue;
       }
@@ -167,7 +167,7 @@ export async function decideTrades(
           tokensEstimate: 0n,
           edgeAfterCost: view.edge,
           sizeFraction: frac,
-          skipReason: "size too small after Kelly/settlement",
+          skipReason: "too_small",
         });
         continue;
       }
@@ -214,7 +214,7 @@ export async function decideTrades(
           maxTokensIn,
           edgeAfterCost,
           sizeFraction: frac,
-          skipReason: `edge after impact ${edgeAfterCost.toFixed(3)} < min`,
+          skipReason: "impact",
         });
         continue;
       }
@@ -243,5 +243,66 @@ export async function decideTrades(
     }
   }
 
+  return intents;
+}
+
+/** Fast desk preview: blend only, no quotes/inventory RPCs. */
+export async function previewTrades(
+  markets: ObservedMarket[],
+  cfg: AgentConfig,
+): Promise<TradeIntent[]> {
+  const blended = await Promise.all(
+    markets.map(async (market) => {
+      const views = await blendMarket(market, cfg);
+      const ranked = [...views].sort(
+        (a, b) =>
+          Math.abs(b.edge) * b.confidence * market.settlementScore -
+          Math.abs(a.edge) * a.confidence * market.settlementScore,
+      );
+      return { market, views: ranked.slice(0, 2) };
+    }),
+  );
+
+  const intents: TradeIntent[] = [];
+  for (const row of blended) {
+    for (const view of row.views) {
+      if (Math.abs(view.edge) < cfg.minEdge) {
+        intents.push({
+          market: row.market,
+          view,
+          side: view.edge >= 0 ? "buy" : "sell",
+          shares: 0n,
+          tokensEstimate: 0n,
+          edgeAfterCost: view.edge,
+          sizeFraction: 0,
+          skipReason: "below_floor",
+        });
+        continue;
+      }
+      if (view.edge <= 0) {
+        intents.push({
+          market: row.market,
+          view,
+          side: "sell",
+          shares: 0n,
+          tokensEstimate: 0n,
+          edgeAfterCost: view.edge,
+          sizeFraction: 0,
+          skipReason: "no_shares",
+        });
+        continue;
+      }
+      intents.push({
+        market: row.market,
+        view,
+        side: "buy",
+        shares: 0n,
+        tokensEstimate: 0n,
+        edgeAfterCost: view.edge,
+        sizeFraction: 0,
+        skipReason: "preview",
+      });
+    }
+  }
   return intents;
 }

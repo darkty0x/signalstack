@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SignalStack</title>
+    <title>Desk · SignalStack</title>
     <meta
       name="description"
-      content="SignalStack finds mispriced Delphi markets and trades them for you."
+      content="SignalStack competition desk for Delphi Agent Arena on Gensyn testnet."
     />
-    <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://api.fontshare.com" />
     <link
-      href="https://api.fontshare.com/v2/css?f[]=clash-display@500,600,700&f[]=satoshi@400,500,700&display=swap"
+      href="https://api.fontshare.com/v2/css?f[]=clash-display@600,700&f[]=satoshi@400,500,700&display=swap"
       rel="stylesheet"
     />
     <link
@@ -21,163 +21,133 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <header class="topbar">
-      <a class="brand" href="/">
-        <img class="brand-logo" src="/logo.svg" width="36" height="36" alt="" />
-        <span class="brand-text">
-          <span class="brand-name">SignalStack</span>
-          <span class="brand-sub">DELPHI ARENA</span>
-        </span>
+    <header class="top">
+      <a class="wordmark" href="/" aria-label="SignalStack home">
+        <span class="wm-strong">Signal</span><span class="wm-rest">Stack</span>
       </a>
-      <nav class="nav">
-        <span class="chip" id="modeChip">…</span>
-        <span class="chip soft" id="watchChip">Idle</span>
+      <nav class="top-nav" aria-label="Status">
+        <span class="pill" id="modeChip">…</span>
+        <span class="pill quiet" id="netChip">testnet</span>
+        <span class="pill quiet" id="watchChip">Idle</span>
       </nav>
     </header>
 
-    <main>
-      <section class="hero">
-        <div class="hero-copy-wrap">
-          <p class="eyebrow">Competition control room</p>
-          <h1>Trade the edge.<br />Ignore the noise.</h1>
-          <p class="lede">
-            SignalStack stacks Polymarket odds, calibrated forecasts, and
-            anti-herd fades — then trades Delphi testnet markets only when the
-            edge clears costs.
+    <main class="wrap">
+      <section class="page-head">
+        <div>
+          <h1>Desk</h1>
+          <p class="purpose">
+            Scan Delphi markets, size only when edge clears costs, trade on
+            Gensyn testnet.
           </p>
-          <div class="hero-actions">
-            <button id="btnOnce" class="btn primary">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h4l2-7 4 14 2-7h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Find edges now
-            </button>
-            <button id="btnWatch" class="btn secondary">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v4l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-              Keep watching
-            </button>
-            <button id="btnStop" class="btn ghost" disabled>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.5" fill="currentColor"/></svg>
-              Stop
-            </button>
-          </div>
-          <p class="hero-note" id="heroNote">Checking setup…</p>
         </div>
-        <div class="hero-visual" aria-hidden="true">
-          <img src="/hero-mark.svg" alt="" />
+        <div class="actions">
+          <button id="btnOnce" class="btn primary">Find edges</button>
+          <button id="btnWatch" class="btn">Start watch</button>
+          <button id="btnStop" class="btn quiet" disabled>Stop</button>
         </div>
       </section>
 
-      <section class="stats" aria-label="Snapshot">
-        <article class="stat">
-          <div class="stat-icon bank">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16M6 10v8m4-8v8m4-8v8m4-8v8M3 18h18M12 4l9 6H3l9-6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-          </div>
-          <div>
-            <p class="label">Bankroll</p>
-            <p class="value" id="bankroll">—</p>
-            <p class="sub" id="ethBal">Gas —</p>
-          </div>
-        </article>
-        <article class="stat">
-          <div class="stat-icon edge">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V9m7 10V5m7 14v-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 19h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-          </div>
-          <div>
-            <p class="label">Best edge</p>
-            <p class="value" id="bestEdge">—</p>
-            <p class="sub" id="scanStats">No scan yet</p>
-          </div>
-        </article>
-        <article class="stat">
-          <div class="stat-icon floor">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M8 8l-4 4 4 4M16 8l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <div>
-            <p class="label">Edge floor</p>
-            <p class="value" id="minEdge">—</p>
-            <p class="sub" id="deadline">Deadline —</p>
-          </div>
-        </article>
+      <p class="banner" id="heroNote">Checking setup…</p>
+
+      <section class="metrics" aria-label="Snapshot">
+        <div class="metric">
+          <span class="k">Bankroll</span>
+          <strong id="bankroll">—</strong>
+          <span class="s" id="ethBal">Gas —</span>
+        </div>
+        <div class="metric">
+          <span class="k">Best edge</span>
+          <strong id="bestEdge">—</strong>
+          <span class="s" id="scanStats">No scan yet</span>
+        </div>
+        <div class="metric">
+          <span class="k">Floor</span>
+          <strong id="minEdge">—</strong>
+          <span class="s" id="deadline">Deadline —</span>
+        </div>
+        <div class="metric">
+          <span class="k">Wallet</span>
+          <strong class="mono short" id="walletShort">—</strong>
+          <span class="s" id="llmState">External + anti-herd</span>
+        </div>
       </section>
 
-      <section class="panel" id="setupSection">
-        <div class="panel-head">
-          <div class="panel-title">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.2 4.5L19 9l-3.5 3.4L16.4 18 12 15.8 7.6 18l.9-5.6L5 9l4.8-1.5L12 3z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-            <h2>Setup</h2>
-          </div>
+      <section class="block" id="setupSection">
+        <div class="block-head">
+          <h2>Setup</h2>
           <p id="readySummary">Checking…</p>
         </div>
-        <ol class="steps" id="checks"></ol>
+        <ol class="checks" id="checks"></ol>
       </section>
 
-      <section class="panel">
-        <div class="panel-head">
-          <div class="panel-title">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="18" cy="15" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
-            <h2>Opportunities</h2>
-          </div>
-          <p>Edges after costs</p>
+      <section class="block">
+        <div class="block-head">
+          <h2>Opportunities</h2>
+          <p>Ranked by edge after cost</p>
         </div>
-        <div class="cards" id="edgeCards">
-          <div class="empty">
-            <img src="/empty-edges.svg" width="72" height="72" alt="" />
-            <strong>No opportunities yet</strong>
-            <span>Tap Find edges now to scan open Delphi markets.</span>
-          </div>
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Market</th>
+                <th>Outcome</th>
+                <th>Side</th>
+                <th>Market %</th>
+                <th>View %</th>
+                <th>Edge</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="edgeBody">
+              <tr>
+                <td colspan="7" class="empty">
+                  No opportunities yet. Run Find edges.
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
 
-      <section class="two-col">
-        <section class="panel">
-          <div class="panel-head">
-            <div class="panel-title">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v12H4zM8 7V5h8v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-              <h2>Positions</h2>
-            </div>
+      <section class="split">
+        <section class="block">
+          <div class="block-head">
+            <h2>Positions</h2>
             <p>Open inventory</p>
           </div>
-          <div class="list" id="posList">
-            <div class="empty-inline">No open positions.</div>
+          <div id="posList" class="plain-list">
+            <p class="empty-inline">No open positions.</p>
           </div>
         </section>
-        <section class="panel">
-          <div class="panel-head">
-            <div class="panel-title">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V8a5 5 0 0 1 10 0v2M6 10h12v10H6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-              <h2>Wallet</h2>
-            </div>
-            <p>Competition identity</p>
+        <section class="block">
+          <div class="block-head">
+            <h2>Identity</h2>
+            <p>Registered wallet</p>
           </div>
-          <p class="mono wallet" id="wallet">—</p>
-          <p class="sub" id="llmState">Signals: external + anti-herd</p>
-          <p class="sub danger" id="errLine"></p>
+          <p class="mono full" id="wallet">—</p>
+          <p class="s danger" id="errLine"></p>
         </section>
       </section>
 
-      <details class="advanced panel">
-        <summary>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-          Advanced activity
-        </summary>
-        <div class="advanced-grid">
+      <details class="block advanced">
+        <summary>Advanced</summary>
+        <div class="split tight">
           <div>
             <h3>Journal</h3>
-            <div class="feed" id="journal"></div>
+            <div id="journal" class="feed"></div>
           </div>
           <div>
             <h3>Logs</h3>
-            <div class="feed mono" id="logs"></div>
+            <pre id="logs" class="feed mono"></pre>
           </div>
         </div>
       </details>
     </main>
 
-    <footer class="footer">
-      <div class="footer-brand">
-        <img src="/logo.svg" width="20" height="20" alt="" />
-        <span>SignalStack</span>
-      </div>
-      <button id="btnRefresh" class="btn ghost tiny">Refresh</button>
+    <footer class="foot">
+      <span>SignalStack · Delphi Agent Arena</span>
+      <button id="btnRefresh" class="text-btn">Refresh</button>
       <span id="health">…</span>
     </footer>
 

@@ -1,11 +1,5 @@
 const $ = (id) => document.getElementById(id);
 
-const ICONS = {
-  buy: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-  sell: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-  skip: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
-};
-
 function pct(n) {
   if (n === undefined || n === null || Number.isNaN(n)) return "—";
   const sign = n > 0 ? "+" : "";
@@ -15,11 +9,6 @@ function pct(n) {
 function shortAddr(a) {
   if (!a) return "—";
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
-}
-
-function fmtTime(iso) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString();
 }
 
 function escapeHtml(s) {
@@ -53,40 +42,35 @@ function renderChecks(readiness) {
     return;
   }
 
-  summary.textContent = readiness.ready
-    ? "Ready to scan"
-    : "Finish setup to unlock trading";
+  summary.textContent = readiness.ready ? "Ready" : "Blocked";
   summary.className = readiness.ready ? "ready-ok" : "ready-bad";
   note.textContent = readiness.ready
-    ? "Setup looks good. Scan markets or leave watch mode running on testnet."
-    : "Complete the checklist below, then come back to find edges.";
+    ? "Ready on Gensyn testnet. Find edges or start watch."
+    : "Finish setup before trading.";
 
   el.innerHTML = (readiness.checks || [])
-    .map((c) => {
-      return `<li class="step ${c.ok ? "ok" : ""}">
+    .map(
+      (c) => `<li class="${c.ok ? "ok" : ""}">
         <div class="dot" aria-hidden="true"></div>
         <div>
           <strong>${escapeHtml(c.label)}</strong>
           <span>${escapeHtml(c.detail)}</span>
         </div>
-      </li>`;
-    })
+      </li>`,
+    )
     .join("");
 
   $("setupSection").hidden = readiness.ready;
 }
 
 function renderEdges(intents = []) {
-  const el = $("edgeCards");
+  const body = $("edgeBody");
   const actionable = intents.filter((i) => !i.skipReason);
-  const shown = (actionable.length ? actionable : intents).slice(0, 8);
+  const shown = (actionable.length ? actionable : intents).slice(0, 12);
 
   if (!shown.length) {
-    el.innerHTML = `<div class="empty">
-      <img src="/empty-edges.svg" width="72" height="72" alt="" />
-      <strong>No opportunities yet</strong>
-      <span>Tap Find edges now to scan open Delphi markets.</span>
-    </div>`;
+    body.innerHTML =
+      '<tr><td colspan="7" class="empty">No opportunities yet. Run Find edges.</td></tr>';
     $("bestEdge").textContent = "—";
     return;
   }
@@ -96,23 +80,22 @@ function renderEdges(intents = []) {
   )[0];
   $("bestEdge").textContent = pct(best?.edgeAfterCost);
 
-  el.innerHTML = shown
+  body.innerHTML = shown
     .map((i) => {
-      const actionableRow = !i.skipReason;
-      const kind = actionableRow ? i.side : "skip";
-      return `<article class="edge-card">
-        <div class="edge-top">
-          <p class="edge-question"><a href="${escapeAttr(i.url)}" target="_blank" rel="noreferrer">${escapeHtml(i.question)}</a></p>
-          <span class="badge ${kind}">${ICONS[kind] || ""}${escapeHtml(kind)}</span>
-        </div>
-        <div class="edge-meta">
-          <div><span class="lbl">Outcome</span><span class="val">${escapeHtml(i.outcome)}</span></div>
-          <div><span class="lbl">Market</span><span class="val">${pct(i.marketProb)}</span></div>
-          <div><span class="lbl">Our view</span><span class="val">${pct(i.blendedProb)}</span></div>
-          <div><span class="lbl">Edge</span><span class="val ${i.edgeAfterCost >= 0 ? "pos" : "neg"}">${pct(i.edgeAfterCost)}</span></div>
-        </div>
-        ${i.skipReason ? `<p class="sub">${escapeHtml(i.skipReason)}</p>` : `<p class="sub pos">Ready to trade this edge</p>`}
-      </article>`;
+      const sideClass = i.side === "buy" ? "side-buy" : "side-sell";
+      const edgeClass = i.edgeAfterCost >= 0 ? "pos" : "neg";
+      const status = i.skipReason
+        ? escapeHtml(i.skipReason)
+        : '<span class="side-buy">Action</span>';
+      return `<tr>
+        <td><a href="${escapeAttr(i.url)}" target="_blank" rel="noreferrer">${escapeHtml(i.question)}</a></td>
+        <td>${escapeHtml(i.outcome)}</td>
+        <td class="${sideClass}">${escapeHtml(i.side)}</td>
+        <td class="mono">${pct(i.marketProb)}</td>
+        <td class="mono">${pct(i.blendedProb)}</td>
+        <td class="${edgeClass}">${pct(i.edgeAfterCost)}</td>
+        <td>${status}</td>
+      </tr>`;
     })
     .join("");
 }
@@ -120,11 +103,11 @@ function renderEdges(intents = []) {
 function renderPositions(positions = [], error) {
   const el = $("posList");
   if (error && !positions.length) {
-    el.innerHTML = `<div class="empty-inline">${escapeHtml(error)}</div>`;
+    el.innerHTML = `<p class="empty-inline">${escapeHtml(error)}</p>`;
     return;
   }
   if (!positions.length) {
-    el.innerHTML = `<div class="empty-inline">No open positions.</div>`;
+    el.innerHTML = `<p class="empty-inline">No open positions.</p>`;
     return;
   }
   el.innerHTML = positions
@@ -135,7 +118,7 @@ function renderPositions(positions = [], error) {
           ? `<a href="${escapeAttr(p.url)}" target="_blank" rel="noreferrer">${escapeHtml(p.question)}</a>`
           : escapeHtml(p.question)
         : escapeHtml(p.market);
-      return `<div class="pos-row"><strong>${title}</strong><span class="sub">${escapeHtml(p.outcome ?? `#${p.outcomeIdx}`)} · ${Number(p.sharesHuman).toFixed(3)} shares · ${escapeHtml(p.marketStatus)}</span></div>`;
+      return `<div class="row"><strong>${title}</strong><div class="s">${escapeHtml(p.outcome ?? `#${p.outcomeIdx}`)} · ${Number(p.sharesHuman).toFixed(3)} shares · ${escapeHtml(p.marketStatus)}</div></div>`;
     })
     .join("");
 }
@@ -143,13 +126,13 @@ function renderPositions(positions = [], error) {
 function renderJournal(entries = []) {
   const el = $("journal");
   if (!entries.length) {
-    el.innerHTML = `<div class="empty-inline">Nothing recorded yet.</div>`;
+    el.innerHTML = `<p class="empty-inline">Nothing recorded yet.</p>`;
     return;
   }
   el.innerHTML = entries
     .slice(0, 30)
     .map((e) => {
-      return `<div class="feed-item"><div class="t">${escapeHtml(e.ts)} · ${escapeHtml(e.event || "event")}</div><strong>${escapeHtml(e.question || e.market || "")}</strong><div class="sub">${escapeHtml(e.reason || e.tx || e.outcome || "")}</div></div>`;
+      return `<div class="row"><div class="t">${escapeHtml(e.ts)} · ${escapeHtml(e.event || "event")}</div><strong>${escapeHtml(e.question || e.market || "")}</strong><div class="s">${escapeHtml(e.reason || e.tx || e.outcome || "")}</div></div>`;
     })
     .join("");
 }
@@ -160,22 +143,24 @@ function renderLogs(lines = []) {
 
 function applyStatus(s) {
   $("wallet").textContent = s.wallet || "—";
+  $("walletShort").textContent = shortAddr(s.wallet);
   $("minEdge").textContent = pct(s.minEdge);
   $("deadline").textContent = s.deadlineIso
     ? `Ends ${new Date(s.deadlineIso).toLocaleDateString()}`
     : "Deadline —";
   $("llmState").textContent = s.llmEnabled
-    ? "Signals: external + LLM + anti-herd"
-    : "Signals: external odds + anti-herd";
+    ? "External + LLM + anti-herd"
+    : "External + anti-herd";
+  $("netChip").textContent = s.network || "testnet";
 
   const mode = $("modeChip");
-  mode.textContent = s.dryRun ? "Dry run" : "Live · testnet";
-  mode.className = s.dryRun ? "chip warn" : "chip live";
+  mode.textContent = s.dryRun ? "Dry run" : "Live";
+  mode.className = s.dryRun ? "pill warn" : "pill live";
 
   const watching = s.state?.watch?.running;
   const watch = $("watchChip");
   watch.textContent = watching ? "Watching" : "Idle";
-  watch.className = watching ? "chip live" : "chip soft";
+  watch.className = watching ? "pill live" : "pill quiet";
 
   const ready = s.readiness?.ready;
   $("btnWatch").disabled = !!watching || !ready;
@@ -186,15 +171,15 @@ function applyStatus(s) {
     $("bankroll").textContent = `${Number(s.balances.token).toLocaleString(undefined, { maximumFractionDigits: 2 })} USDC`;
     $("ethBal").textContent = `Gas ${Number(s.balances.eth).toFixed(5)} ETH`;
   } else {
-    $("bankroll").textContent = s.apiReady ? "—" : "Setup needed";
+    $("bankroll").textContent = "—";
     $("ethBal").textContent = s.balanceError
       ? s.balanceError.slice(0, 70)
-      : "Connect wallet signer for balances";
+      : "Gas —";
   }
 
   const last = s.state?.watch?.lastResult || s.state?.lastScan;
   $("scanStats").textContent = last
-    ? `${last.scanned} markets · ${last.candidates} actionable`
+    ? `${last.scanned} scanned · ${last.candidates} actionable`
     : "No scan yet";
 
   $("errLine").textContent = s.state?.watch?.lastError || "";
@@ -214,25 +199,22 @@ async function refresh() {
   renderJournal(journal.entries || []);
   renderLogs(logs.lines || []);
   renderPositions(positions.positions || [], positions.error);
-  $("health").textContent = `${shortAddr(status.wallet)} · synced`;
+  $("health").textContent = shortAddr(status.wallet);
   void health;
-  void fmtTime;
 }
 
 async function withBusy(btn, fn) {
   const prev = btn.disabled;
+  const old = btn.textContent;
   btn.disabled = true;
-  const old = btn.innerHTML;
-  if (btn.id === "btnOnce") {
-    btn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2" opacity="0.35"/><path d="M12 4a8 8 0 0 1 8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Scanning…`;
-  }
+  if (btn.id === "btnOnce") btn.textContent = "Scanning…";
   try {
     await fn();
   } catch (err) {
     $("errLine").textContent = err.message || String(err);
     $("heroNote").textContent = err.message || String(err);
   } finally {
-    btn.innerHTML = old;
+    btn.textContent = old;
     btn.disabled = prev;
     await refresh();
   }
@@ -244,8 +226,8 @@ $("btnOnce").onclick = () =>
     const result = await api("/api/once", { method: "POST" });
     renderEdges(result.topIntents || []);
     $("heroNote").textContent = result.candidates
-      ? `Found ${result.candidates} actionable edge${result.candidates === 1 ? "" : "s"}.`
-      : "Scan finished — no edges cleared the floor this round.";
+      ? `${result.candidates} actionable edge${result.candidates === 1 ? "" : "s"} found.`
+      : "Scan finished. No edges cleared the floor.";
   });
 $("btnWatch").onclick = () =>
   withBusy($("btnWatch"), () => api("/api/watch/start", { method: "POST" }));

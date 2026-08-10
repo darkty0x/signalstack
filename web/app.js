@@ -311,14 +311,8 @@ function renderEdges(intents = []) {
   if (!shown.length) {
     body.innerHTML =
       '<tr><td colspan="7" class="empty">No markets yet. Run Find edges.</td></tr>';
-    $("bestEdge").textContent = "—";
-    $("bestEdge").className = "num flat";
     return;
   }
-
-  const best = shown[0]?.edge ?? shown[0]?.edgeAfterCost;
-  $("bestEdge").textContent = pct(best);
-  $("bestEdge").className = pctClass(best);
 
   body.innerHTML = shown
     .map((i) => {

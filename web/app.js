@@ -386,6 +386,7 @@ function renderPortfolio(portfolio, positions = [], error, fallbackCash, tokenLa
   }
 
   renderPositions(positions, error, portfolio);
+  lastPositions = Array.isArray(positions) ? positions : [];
 }
 
 function renderPositions(positions = [], error, portfolio) {
@@ -445,6 +446,22 @@ function renderPositions(positions = [], error, portfolio) {
 }
 
 let sellBusy = false;
+/** @type {Array<{market?: string, question?: string, outcome?: string}>} */
+let lastPositions = [];
+
+function resolveMarketLabel(e) {
+  if (e.question && !/^Buy · 0x|^Sell · 0x|^Trade · 0x/.test(String(e.question))) {
+    return e.question;
+  }
+  const m = String(e.market || "").toLowerCase();
+  if (m) {
+    const hit = lastPositions.find(
+      (p) => String(p.market || "").toLowerCase() === m,
+    );
+    if (hit?.question) return hit.question;
+  }
+  return e.question || e.method || "Market fill";
+}
 
 async function sellOne(market, outcomeIdx, btn) {
   if (sellBusy || !market) return;
@@ -504,55 +521,77 @@ async function sellAll() {
   }
 }
 
+function activityKind(event) {
+  const ev = String(event || "").toLowerCase();
+  if (ev.includes("buy")) return "buy";
+  if (ev.includes("sell")) return "sell";
+  if (ev.includes("redeem") || ev.includes("liquidat")) return "redeem";
+  if (ev.includes("error") || ev.includes("fail")) return "error";
+  return "tx";
+}
+
+function activityIcon(kind) {
+  if (kind === "buy") {
+    return `<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M10 3.2 15.8 9H12v7.2H8V9H4.2L10 3.2Z"/></svg>`;
+  }
+  if (kind === "sell") {
+    return `<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M10 16.8 4.2 11H8V3.8h4V11h3.8L10 16.8Z"/></svg>`;
+  }
+  if (kind === "redeem") {
+    return `<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M10 2.8a7.2 7.2 0 1 1 0 14.4 7.2 7.2 0 0 1 0-14.4Zm0 1.6a5.6 5.6 0 1 0 0 11.2 5.6 5.6 0 0 0 0-11.2Zm-.8 2.4h1.6v3.2H13v1.6H9.2V6.8Z"/></svg>`;
+  }
+  if (kind === "error") {
+    return `<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="m10 3.2 7 12.2H3L10 3.2Zm0 3.4L6.2 13.2h7.6L10 6.6Zm-.8 2.2h1.6v2.4H9.2V8.8Zm0 3.4h1.6v1.6H9.2v-1.6Z"/></svg>`;
+  }
+  return `<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M4.2 5.2h11.6v1.6H4.2V5.2Zm0 4h11.6v1.6H4.2V9.2Zm0 4h8.4v1.6H4.2v-1.6Z"/></svg>`;
+}
+
+function activityTitle(e, kind) {
+  const outcome = e.outcome ? String(e.outcome) : "";
+  if (kind === "buy") return outcome ? `Bought ${outcome}` : "Buy";
+  if (kind === "sell") return outcome ? `Sold ${outcome}` : "Sell";
+  if (kind === "redeem") return "Redeemed";
+  if (kind === "error") return "Trade failed";
+  return e.method || e.event || "Transaction";
+}
+
 function renderJournal(entries = []) {
   const el = $("journal");
   if (!entries.length) {
-    el.innerHTML = `<p class="empty-inline">No fills yet — buys/sells from this wallet will show here.</p>`;
+    el.innerHTML = `<p class="empty-inline">No wallet fills yet. Buys and sells will land here.</p>`;
     return;
   }
   el.innerHTML = entries
     .slice(0, 40)
     .map((e) => {
-      const event = String(e.event || "event");
-      const when = e.ts ? relativeAge(e.ts) || e.ts : "";
-      const title =
-        e.question ||
-        e.method ||
-        e.market ||
-        (e.tx ? String(e.tx).slice(0, 14) + "…" : "Trade");
-      const bits = [
-        e.outcome,
-        e.side,
+      const kind = activityKind(e.event);
+      const when = e.ts ? relativeAge(e.ts) || "" : "";
+      const title = activityTitle(e, kind);
+      const market = resolveMarketLabel(e);
+      const meta = [
         e.sharesHuman !== undefined
-          ? `${Number(e.sharesHuman).toLocaleString(undefined, { maximumFractionDigits: 1 })} sh`
+          ? `${Number(e.sharesHuman).toLocaleString(undefined, { maximumFractionDigits: 1 })} shares`
           : null,
-        e.source === "chain" ? "on-chain" : null,
         e.manual ? "manual" : null,
-        e.reason && e.source === "journal" ? e.reason : null,
-        e.status && e.status !== "ok" && e.status !== "success"
-          ? e.status
-          : null,
+        e.source === "chain" ? "confirmed" : null,
       ].filter(Boolean);
-      const txBit = e.txUrl
-        ? `<a href="${escapeAttr(e.txUrl)}" target="_blank" rel="noreferrer">${escapeHtml(String(e.tx).slice(0, 12))}…</a>`
-        : e.tx
-          ? escapeHtml(String(e.tx).slice(0, 12)) + "…"
-          : "";
-      const pill =
-        /buy/i.test(event)
-          ? "go"
-          : /sell/i.test(event)
-            ? "wait"
-            : /error|fail/i.test(event)
-              ? "mute"
-              : "mute";
-      return `<div class="row"><div class="t">${escapeHtml(when)} · <span class="status-pill ${pill}">${escapeHtml(event)}</span></div><strong>${escapeHtml(title)}</strong><div class="s">${escapeHtml(bits.join(" · "))}${txBit ? ` · ${txBit}` : ""}</div></div>`;
+      const href = e.txUrl || (e.tx ? `https://gensyn-testnet.explorer.alchemy.com/tx/${e.tx}` : "");
+      const right = `<div class="activity-aside">
+          <span class="activity-when">${escapeHtml(when)}</span>
+          ${e.tx ? `<span class="activity-hash mono">${escapeHtml(String(e.tx).slice(0, 10))}…</span>` : ""}
+        </div>`;
+      const inner = `<span class="activity-icon is-${kind}" aria-hidden="true">${activityIcon(kind)}</span>
+        <div class="activity-body">
+          <div class="activity-title">${escapeHtml(title)}</div>
+          <div class="activity-market">${escapeHtml(market)}</div>
+          ${meta.length ? `<div class="activity-meta">${escapeHtml(meta.join(" · "))}</div>` : ""}
+        </div>
+        ${right}`;
+      return href
+        ? `<a class="activity-row" href="${escapeAttr(href)}" target="_blank" rel="noreferrer">${inner}</a>`
+        : `<div class="activity-row">${inner}</div>`;
     })
     .join("");
-}
-
-function renderLogs(lines = []) {
-  $("logs").textContent = lines.slice(0, 50).join("\n") || "No logs yet.";
 }
 
 function applyStatus(s) {
@@ -624,6 +663,7 @@ function applyStatus(s) {
     lastAt: s.state?.lastScanAt,
     tokenLabel,
     cash: s.balances ? Number(s.balances.token) : undefined,
+    wallet,
   };
 }
 
@@ -691,7 +731,6 @@ async function refresh({ light = false } = {}) {
       ? Promise.resolve(null)
       : Promise.all([
           api("/api/journal"),
-          api("/api/logs"),
           api("/api/positions"),
         ]);
 
@@ -700,9 +739,7 @@ async function refresh({ light = false } = {}) {
 
     const extra = await extras;
     if (extra) {
-      const [journal, logs, positions] = extra;
-      renderJournal(journal.entries || []);
-      renderLogs(logs.lines || []);
+      const [journal, positions] = extra;
       renderPortfolio(
         positions.portfolio,
         positions.positions || [],
@@ -710,6 +747,11 @@ async function refresh({ light = false } = {}) {
         view.cash,
         view.tokenLabel,
       );
+      renderJournal(journal.entries || []);
+      if (view.wallet && $("activityExplorer")) {
+        $("activityExplorer").href =
+          `https://gensyn-testnet.explorer.alchemy.com/address/${view.wallet}`;
+      }
     }
 
     // Never block first paint on a fresh scan when cache is empty —

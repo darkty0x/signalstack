@@ -203,6 +203,26 @@
         </div>
       </section>
 
+      <section class="block" id="activitySection">
+        <div class="block-head">
+          <div>
+            <h2>Activity</h2>
+            <p>Wallet fills on competition-testnet</p>
+          </div>
+          <a
+            class="btn quiet tiny"
+            id="activityExplorer"
+            href="https://gensyn-testnet.explorer.alchemy.com/address/0x67df2320690a7870c20105662d525a567254b7d5"
+            target="_blank"
+            rel="noreferrer"
+            >Explorer</a
+          >
+        </div>
+        <div id="journal" class="activity-list" aria-live="polite">
+          <p class="empty-inline">Loading activity…</p>
+        </div>
+      </section>
+
       <section class="block">
         <div class="block-head">
           <h2>Opportunities</h2>
@@ -259,23 +279,6 @@
         <p class="s" id="copyNote"></p>
         <p class="s danger" id="errLine"></p>
       </section>
-
-      <details class="block advanced" open>
-        <summary>Activity</summary>
-        <div class="split tight">
-          <div>
-            <h3>Transactions</h3>
-            <p class="s" style="margin:0 0 0.55rem">
-              On-chain buys/sells for this wallet + agent journal
-            </p>
-            <div id="journal" class="feed"></div>
-          </div>
-          <div>
-            <h3>Logs</h3>
-            <pre id="logs" class="feed mono"></pre>
-          </div>
-        </div>
-      </details>
     </main>
 
     <footer class="foot">

@@ -876,40 +876,120 @@ a:hover {
   color: var(--ink-soft);
 }
 
-.advanced summary {
-  cursor: pointer;
-  font-weight: 500;
-  color: var(--ink-soft);
-  font-size: 1rem;
-}
-
-.advanced h3 {
-  margin: 0 0 0.5rem;
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--mute);
-  font-weight: 600;
-}
-
-.feed {
-  display: grid;
-  gap: 0.45rem;
-  max-height: 280px;
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 420px;
   overflow: auto;
+  margin: 0 -0.25rem;
+  padding: 0 0.25rem;
+  border-top: 1px solid var(--line);
 }
 
-pre.feed {
-  margin: 0;
-  white-space: pre-wrap;
-  font-size: 0.82rem;
+.activity-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.85rem;
+  align-items: center;
+  padding: 0.9rem 0.35rem;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+  text-decoration: none;
+  transition: background 160ms ease;
+}
+
+.activity-row:last-child {
+  border-bottom: none;
+}
+
+a.activity-row:hover {
+  opacity: 1;
+  background: var(--paper);
+  border-radius: 8px;
+}
+
+.activity-icon {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: var(--paper-2);
   color: var(--ink-soft);
 }
 
-.feed .t {
+.activity-icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  display: block;
+}
+
+.activity-icon.is-buy {
+  background: var(--pos-bg);
+  color: var(--pos);
+}
+
+.activity-icon.is-sell {
+  background: var(--wait-bg);
+  color: var(--wait);
+}
+
+.activity-icon.is-redeem {
+  background: rgba(26, 26, 26, 0.06);
+  color: var(--ink);
+}
+
+.activity-icon.is-error {
+  background: var(--neg-bg);
+  color: var(--neg);
+}
+
+.activity-body {
+  min-width: 0;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.activity-title {
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+.activity-market {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-meta {
   color: var(--mute);
+  font-size: 0.82rem;
   font-family: var(--mono);
-  font-size: 0.8rem;
+}
+
+.activity-aside {
+  display: grid;
+  justify-items: end;
+  gap: 0.2rem;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.activity-when {
+  color: var(--mute);
+  font-size: 0.82rem;
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+
+.activity-hash {
+  color: var(--ink-soft);
+  font-size: 0.78rem;
 }
 
 .foot {

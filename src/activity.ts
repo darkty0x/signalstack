@@ -50,6 +50,20 @@ function mapMethod(method: string | null | undefined): string {
   return method || "tx";
 }
 
+function paramMap(
+  decoded:
+    | {
+        parameters?: Array<{ name?: string; value?: string }>;
+      }
+    | undefined,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const p of decoded?.parameters ?? []) {
+    if (p.name && p.value !== undefined) out[p.name] = String(p.value);
+  }
+  return out;
+}
+
 export async function fetchChainActivity(
   wallet: string,
   limit = 40,
@@ -71,6 +85,10 @@ export async function fetchChainActivity(
       result?: string;
       status?: string;
       to?: { name?: string | null; hash?: string };
+      decoded_input?: {
+        method_call?: string;
+        parameters?: Array<{ name?: string; value?: string }>;
+      };
     }>;
   };
   const items = body.items ?? [];
@@ -78,7 +96,6 @@ export async function fetchChainActivity(
   for (const t of items) {
     if (!t.hash) continue;
     const method = t.method || "";
-    // Focus on trading activity; skip approvals/noise if unlabeled.
     if (
       method &&
       !/buy|sell|redeem|liquidat/i.test(method) &&
@@ -87,6 +104,15 @@ export async function fetchChainActivity(
       continue;
     }
     const event = mapMethod(method);
+    const params = paramMap(t.decoded_input);
+    const outcomeIdx =
+      params.outcomeIdx !== undefined ? Number(params.outcomeIdx) : undefined;
+    const sharesRaw = params.sharesOut || params.sharesIn;
+    let sharesHuman: number | undefined;
+    if (sharesRaw && /^\d+$/.test(sharesRaw)) {
+      sharesHuman = Number(BigInt(sharesRaw)) / 1e18;
+    }
+    const market = params.marketProxy || params.market;
     out.push({
       ts: t.timestamp || new Date().toISOString(),
       event,
@@ -96,6 +122,14 @@ export async function fetchChainActivity(
       tx: t.hash,
       txUrl: `${EXPLORER_TX}/${t.hash}`,
       reason: t.to?.name || t.to?.hash || "on-chain",
+      market,
+      outcomeIdx,
+      outcome:
+        outcomeIdx === 0 ? "Yes" : outcomeIdx === 1 ? "No" : undefined,
+      sharesHuman,
+      question: market
+        ? `${event === "buy" ? "Buy" : event === "sell" ? "Sell" : "Trade"} · ${market.slice(0, 8)}…${market.slice(-4)}`
+        : method || "Market fill",
     });
     if (out.length >= limit) break;
   }

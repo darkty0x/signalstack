@@ -823,7 +823,7 @@ a:hover {
 
 .plain-list {
   display: grid;
-  gap: 0.45rem;
+  gap: 0.55rem;
 }
 
 .plain-list .row,
@@ -833,6 +833,23 @@ a:hover {
   background: var(--paper);
   border: 1px solid var(--line);
   font-size: 1rem;
+}
+
+.plain-list .pos-row {
+  padding: 0.9rem 1rem;
+}
+
+.plain-list .pos-row strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  line-height: 1.35;
+}
+
+.plain-list .pos-row .s {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
 }
 
 .empty-inline {

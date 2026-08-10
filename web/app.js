@@ -331,23 +331,79 @@ function renderEdges(intents = []) {
     .join("");
 }
 
-function renderPositions(positions = [], error) {
+function fmtTok(n, digits = 1) {
+  if (n === undefined || n === null || Number.isNaN(Number(n))) return "—";
+  return Number(n).toLocaleString(undefined, {
+    maximumFractionDigits: digits,
+    minimumFractionDigits: 0,
+  });
+}
+
+function renderPortfolio(portfolio, positions = [], error, fallbackCash, tokenLabel) {
+  const label = portfolio?.tokenLabel || tokenLabel || "TST";
+  const cash =
+    portfolio?.cash ??
+    (fallbackCash !== undefined ? Number(fallbackCash) : undefined);
+  const mark = portfolio?.markValue;
+  const equity =
+    portfolio?.equity ??
+    (cash !== undefined && mark !== undefined ? cash + mark : cash);
+  const settle = portfolio?.settleIfWin;
+  const pnl = portfolio?.pnlMark;
+  const start = portfolio?.startingBankroll ?? 1000;
+
+  if (equity !== undefined && Number.isFinite(equity)) {
+    $("bankroll").textContent = `${fmtTok(equity, 1)} ${label}`;
+    $("bankroll").className =
+      pnl === undefined || pnl === null
+        ? ""
+        : pnl >= 0
+          ? "num pos"
+          : "num neg";
+  }
+
+  const cashBit = cash !== undefined ? `Cash ${fmtTok(cash, 1)}` : "Cash —";
+  const markBit = mark !== undefined ? `Mark ${fmtTok(mark, 1)}` : "Mark —";
+  if ($("ethBal")) $("ethBal").textContent = `${cashBit} · ${markBit} ${label}`;
+
+  if ($("settleIfWin")) {
+    $("settleIfWin").textContent =
+      settle !== undefined ? `${fmtTok(settle, 1)} ${label}` : "—";
+    $("settleIfWin").className =
+      settle !== undefined && cash !== undefined && settle >= (cash || 0)
+        ? "num pos"
+        : "";
+  }
+  if ($("pnlMark")) {
+    if (pnl === undefined || pnl === null || Number.isNaN(pnl)) {
+      $("pnlMark").textContent = `vs start ${fmtTok(start, 0)} ${label}`;
+      $("pnlMark").className = "s";
+    } else {
+      const sign = pnl > 0 ? "+" : "";
+      $("pnlMark").textContent = `Mark P&L ${sign}${fmtTok(pnl, 1)} vs ${fmtTok(start, 0)}`;
+      $("pnlMark").className = `s ${pnl >= 0 ? "num pos" : "num neg"}`;
+    }
+  }
+
+  renderPositions(positions, error, portfolio);
+}
+
+function renderPositions(positions = [], error, portfolio) {
   const el = $("posList");
   const countEl = $("posCount");
   const sharesEl = $("posShares");
   const list = Array.isArray(positions) ? positions : [];
-  const totalShares = list.reduce(
-    (sum, p) => sum + (Number(p.sharesHuman) || 0),
-    0,
-  );
+  const totalShares =
+    portfolio?.sharesHeld ??
+    list.reduce((sum, p) => sum + (Number(p.sharesHuman) || 0), 0);
 
   if (countEl) {
-    countEl.textContent = String(list.length);
+    countEl.textContent = String(portfolio?.positionCount ?? list.length);
     countEl.className = list.length ? "num pos" : "";
   }
   if (sharesEl) {
     sharesEl.textContent = list.length
-      ? `${totalShares.toLocaleString(undefined, { maximumFractionDigits: 1 })} shares held`
+      ? `${fmtTok(totalShares, 1)} shares held`
       : "No fills yet";
   }
 
@@ -356,7 +412,7 @@ function renderPositions(positions = [], error) {
     return;
   }
   if (!list.length) {
-    el.innerHTML = `<p class="empty-inline">No market shares yet. Cash sits in bankroll until an edge clears the floor and the agent buys.</p>`;
+    el.innerHTML = `<p class="empty-inline">No market shares yet. Cash sits idle until an edge clears the floor and the agent buys.</p>`;
     return;
   }
   el.innerHTML = list
@@ -367,10 +423,15 @@ function renderPositions(positions = [], error) {
           ? `<a href="${escapeAttr(p.url)}" target="_blank" rel="noreferrer">${escapeHtml(p.question)}</a>`
           : escapeHtml(p.question)
         : escapeHtml(p.market);
-      const shares = Number(p.sharesHuman || 0).toLocaleString(undefined, {
-        maximumFractionDigits: 1,
-      });
-      return `<div class="row pos-row"><strong>${title}</strong><div class="s"><span class="status-pill go">${escapeHtml(p.outcome ?? `#${p.outcomeIdx}`)}</span> · <span class="mono">${shares} shares</span> · ${escapeHtml(p.marketStatus)}</div></div>`;
+      const shares = fmtTok(p.sharesHuman, 1);
+      const spot =
+        p.spotPrice !== undefined
+          ? `${(Number(p.spotPrice) * 100).toFixed(1)}¢`
+          : "—";
+      const mark = p.markValue !== undefined ? fmtTok(p.markValue, 1) : "—";
+      const ifWin =
+        p.settleIfWin !== undefined ? fmtTok(p.settleIfWin, 1) : shares;
+      return `<div class="row pos-row"><strong>${title}</strong><div class="s"><span class="status-pill go">${escapeHtml(p.outcome ?? `#${p.outcomeIdx}`)}</span> · <span class="mono">${shares} sh</span> · spot ${spot} · mark ${mark} · if win ${ifWin}</div></div>`;
     })
     .join("");
 }
@@ -396,11 +457,6 @@ function renderLogs(lines = []) {
 function applyStatus(s) {
   const wallet = s.wallet || "";
   $("wallet").textContent = wallet || "—";
-  $("minEdge").textContent = pct(s.minEdge);
-  $("minEdge").className = "num flat";
-  $("deadline").textContent = s.deadlineIso
-    ? `Ends ${new Date(s.deadlineIso).toLocaleDateString()}`
-    : "Deadline —";
   $("bankroll").className = "";
 
   if (typeof s.pollSeconds === "number" && s.pollSeconds > 0) {
@@ -437,13 +493,14 @@ function applyStatus(s) {
 
   const tokenLabel =
     s.network === "competition-testnet" ? "TST" : "USDC";
-  if (s.balances) {
-    $("bankroll").textContent = `${Number(s.balances.token).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${tokenLabel}`;
-    $("ethBal").textContent = `Gas ${Number(s.balances.eth).toFixed(5)} ETH`;
+  // Cash-only placeholder until /api/positions portfolio arrives.
+  if (s.balances && $("bankroll").textContent === "—") {
+    $("bankroll").textContent = `${fmtTok(s.balances.token, 1)} ${tokenLabel} cash`;
+    $("ethBal").textContent = `Cash ${fmtTok(s.balances.token, 1)} · Mark pending`;
   } else if (!s.balances && $("bankroll").textContent === "—") {
     $("ethBal").textContent = s.balanceError
       ? s.balanceError.slice(0, 70)
-      : "Gas —";
+      : "Cash — · Mark —";
   }
 
   const last = s.state?.watch?.lastResult || s.state?.lastScan;
@@ -460,7 +517,13 @@ function applyStatus(s) {
   $("errLine").textContent = s.state?.watch?.lastError || "";
   renderChecks(s.readiness);
   if (last?.topIntents?.length) renderEdges(last.topIntents);
-  return { ready, hasEdges: Boolean(last?.topIntents?.length), lastAt: s.state?.lastScanAt };
+  return {
+    ready,
+    hasEdges: Boolean(last?.topIntents?.length),
+    lastAt: s.state?.lastScanAt,
+    tokenLabel,
+    cash: s.balances ? Number(s.balances.token) : undefined,
+  };
 }
 
 async function copyWallet() {
@@ -539,7 +602,13 @@ async function refresh({ light = false } = {}) {
       const [journal, logs, positions] = extra;
       renderJournal(journal.entries || []);
       renderLogs(logs.lines || []);
-      renderPositions(positions.positions || [], positions.error);
+      renderPortfolio(
+        positions.portfolio,
+        positions.positions || [],
+        positions.error,
+        view.cash,
+        view.tokenLabel,
+      );
     }
 
     // Never block first paint on a fresh scan when cache is empty —

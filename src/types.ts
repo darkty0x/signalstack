@@ -27,6 +27,24 @@ export type PositionRow = {
   question?: string;
   outcome?: string;
   url?: string;
+  /** Spot price of held outcome (0–1 TST per share). */
+  spotPrice?: number;
+  /** Mark-to-market value = shares × spot. */
+  markValue?: number;
+  /** Settlement payoff if this outcome wins (= shares × 1). */
+  settleIfWin?: number;
+};
+
+export type PortfolioSummary = {
+  cash: number;
+  markValue: number;
+  equity: number;
+  settleIfWin: number;
+  pnlMark: number | null;
+  startingBankroll: number;
+  tokenLabel: string;
+  positionCount: number;
+  sharesHeld: number;
 };
 
 export type SignalSource =

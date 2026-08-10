@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { loadConfig } from "./config.js";
 import { getClient } from "./client.js";
 import { readBalances } from "./balances.js";
-import { listOpenPositions } from "./positions.js";
+import { loadPortfolio } from "./positions.js";
 import { readinessSummary } from "./readiness.js";
 import { runCycle, runScan, startWatch, stopWatch } from "./agent/loop.js";
 import { getState, readJournal, readLogs, summarize } from "./state.js";
@@ -143,15 +143,20 @@ const server = createServer(async (req, res) => {
       if (!process.env.DELPHI_API_ACCESS_KEY?.trim()) {
         return json(res, 200, {
           positions: [],
+          portfolio: null,
           error: "API key missing",
         });
       }
       try {
-        const positions = await listOpenPositions(getClient(cfg), cfg);
-        return json(res, 200, { positions });
+        const { positions, portfolio } = await loadPortfolio(
+          getClient(cfg),
+          cfg,
+        );
+        return json(res, 200, { positions, portfolio });
       } catch (err) {
         return json(res, 200, {
           positions: [],
+          portfolio: null,
           error: err instanceof Error ? err.message : String(err),
         });
       }

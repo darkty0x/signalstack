@@ -148,9 +148,14 @@
 
       <section class="metrics" aria-label="Snapshot" id="metrics">
         <div class="metric">
-          <span class="k">Bankroll</span>
+          <span class="k">Equity</span>
           <strong id="bankroll" class="skel-text">—</strong>
-          <span class="s" id="ethBal">Gas —</span>
+          <span class="s" id="ethBal">Cash — · Mark —</span>
+        </div>
+        <div class="metric">
+          <span class="k">If all win</span>
+          <strong id="settleIfWin" class="skel-text">—</strong>
+          <span class="s" id="pnlMark">Mark P&amp;L vs start —</span>
         </div>
         <div class="metric">
           <span class="k">Open positions</span>
@@ -161,11 +166,6 @@
           <span class="k">Last cycle</span>
           <strong id="bestEdge" class="skel-text">—</strong>
           <span class="s" id="scanStats">Loading…</span>
-        </div>
-        <div class="metric">
-          <span class="k">Floor</span>
-          <strong id="minEdge" class="skel-text">—</strong>
-          <span class="s" id="deadline">Deadline —</span>
         </div>
       </section>
 
@@ -180,7 +180,10 @@
       <section class="block" id="positionsSection">
         <div class="block-head">
           <h2>Positions</h2>
-          <p>Live fills — open market shares on competition-testnet</p>
+          <p>
+            Live fills — mark = spot value now · if win = full settlement
+            payoff
+          </p>
         </div>
         <div id="posList" class="plain-list">
           <p class="empty-inline">

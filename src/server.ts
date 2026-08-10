@@ -5,12 +5,11 @@ import { fileURLToPath } from "node:url";
 import { loadConfig } from "./config.js";
 import { getClient } from "./client.js";
 import { readBalances } from "./balances.js";
-import { loadPortfolio } from "./positions.js";
+import { loadPortfolio, sellAllPositions, sellPosition } from "./positions.js";
 import { readinessSummary } from "./readiness.js";
 import { runCycle, runScan, startWatch, stopWatch } from "./agent/loop.js";
 import { getState, readJournal, readLogs, summarize } from "./state.js";
 import { log } from "./util/log.js";
-
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const webRoot = resolve(root, "web");
 const port = Number(process.env.PORT || 4173);
@@ -136,6 +135,55 @@ const server = createServer(async (req, res) => {
         readiness: readinessSummary(),
         state: getState(),
       });
+    }
+
+    if (path === "/api/positions/sell" && method === "POST") {
+      const ready = readinessSummary();
+      if (!ready.ready) {
+        return json(res, 400, {
+          error: "Not ready — fix checklist first",
+          readiness: ready,
+        });
+      }
+      const raw = await readBody(req);
+      let body: {
+        market?: string;
+        outcomeIdx?: number;
+        fraction?: number;
+      } = {};
+      try {
+        body = raw ? JSON.parse(raw) : {};
+      } catch {
+        return json(res, 400, { error: "Invalid JSON body" });
+      }
+      if (!body.market || body.outcomeIdx === undefined) {
+        return json(res, 400, {
+          error: "market and outcomeIdx are required",
+        });
+      }
+      const cfg = loadConfig();
+      const result = await sellPosition(getClient(cfg), cfg, {
+        market: body.market,
+        outcomeIdx: Number(body.outcomeIdx),
+        fraction: body.fraction,
+      });
+      balanceCache = { at: 0, balances: null, error: null };
+      return json(res, result.ok ? 200 : 400, result);
+    }
+
+    if (path === "/api/positions/sell-all" && method === "POST") {
+      const ready = readinessSummary();
+      if (!ready.ready) {
+        return json(res, 400, {
+          error: "Not ready — fix checklist first",
+          readiness: ready,
+        });
+      }
+      await readBody(req);
+      const cfg = loadConfig();
+      const result = await sellAllPositions(getClient(cfg), cfg);
+      balanceCache = { at: 0, balances: null, error: null };
+      return json(res, result.ok || result.results.length === 0 ? 200 : 207, result);
     }
 
     if (path === "/api/positions" && method === "GET") {

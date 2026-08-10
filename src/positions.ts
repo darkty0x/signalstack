@@ -2,6 +2,7 @@ import type { DelphiClient } from "@gensyn-ai/gensyn-delphi-sdk";
 import type { AgentConfig } from "./config.js";
 import type { PortfolioSummary, PositionRow } from "./types.js";
 import { readBalances } from "./balances.js";
+import { journal, log } from "./util/log.js";
 
 /** Competition / practice starting bankroll (allowlist faucet). */
 export const STARTING_BANKROLL = 1000;
@@ -126,5 +127,163 @@ export async function loadPortfolio(
   return {
     positions,
     portfolio: summarizePortfolio(positions, cash, cfg),
+  };
+}
+
+export type SellResult = {
+  ok: boolean;
+  dryRun: boolean;
+  market: string;
+  outcomeIdx: number;
+  outcome?: string;
+  question?: string;
+  sharesIn: string;
+  sharesHuman: number;
+  tokensOut?: string;
+  minTokensOut?: string;
+  tx?: string;
+  error?: string;
+};
+
+/** Sell one open position (full size by default). */
+export async function sellPosition(
+  client: DelphiClient,
+  cfg: AgentConfig,
+  args: {
+    market: string;
+    outcomeIdx: number;
+    /** 0–1 fraction of held shares; default 1 = all. */
+    fraction?: number;
+  },
+): Promise<SellResult> {
+  const market = args.market.toLowerCase() as `0x${string}`;
+  const outcomeIdx = Number(args.outcomeIdx);
+  const fraction = Math.min(1, Math.max(0.01, Number(args.fraction) || 1));
+
+  const positions = await listOpenPositions(client, cfg);
+  const row = positions.find(
+    (p) =>
+      p.market.toLowerCase() === market && Number(p.outcomeIdx) === outcomeIdx,
+  );
+  if (!row) {
+    return {
+      ok: false,
+      dryRun: cfg.dryRun,
+      market,
+      outcomeIdx,
+      sharesIn: "0",
+      sharesHuman: 0,
+      error: "Position not found",
+    };
+  }
+
+  const held = parseShares(row.shares);
+  const sharesIn =
+    fraction >= 0.999
+      ? held
+      : (held * BigInt(Math.floor(fraction * 10_000))) / 10_000n;
+  if (sharesIn <= 0n) {
+    return {
+      ok: false,
+      dryRun: cfg.dryRun,
+      market,
+      outcomeIdx,
+      outcome: row.outcome,
+      question: row.question,
+      sharesIn: "0",
+      sharesHuman: 0,
+      error: "Nothing to sell",
+    };
+  }
+
+  const base: SellResult = {
+    ok: true,
+    dryRun: cfg.dryRun,
+    market,
+    outcomeIdx,
+    outcome: row.outcome,
+    question: row.question,
+    sharesIn: sharesIn.toString(),
+    sharesHuman: Number(sharesIn) / 1e18,
+  };
+
+  try {
+    const quote = await client.quoteSell({
+      marketAddress: market,
+      outcomeIdx,
+      sharesIn,
+    });
+    const minTokensOut =
+      (quote.tokensOut * BigInt(10_000 - cfg.slippageBps)) / 10_000n;
+    base.tokensOut = quote.tokensOut.toString();
+    base.minTokensOut = minTokensOut.toString();
+
+    if (cfg.dryRun) {
+      journal("dry_run_sell", {
+        market,
+        outcomeIdx,
+        outcome: row.outcome,
+        question: row.question,
+        sharesIn: sharesIn.toString(),
+        tokensOut: quote.tokensOut.toString(),
+        minTokensOut: minTokensOut.toString(),
+        manual: true,
+      });
+      log("info", "DRY_RUN manual sell", base);
+      return base;
+    }
+
+    const tx = await client.sellShares({
+      marketAddress: market,
+      outcomeIdx,
+      sharesIn,
+      minTokensOut,
+    });
+    base.tx = tx.transactionHash;
+    journal("sell", {
+      market,
+      outcomeIdx,
+      outcome: row.outcome,
+      question: row.question,
+      sharesIn: sharesIn.toString(),
+      tokensOut: quote.tokensOut.toString(),
+      minTokensOut: minTokensOut.toString(),
+      tx: tx.transactionHash,
+      manual: true,
+    });
+    log("info", "manual sell filled", base);
+    return base;
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    journal("sell_error", {
+      market,
+      outcomeIdx,
+      error,
+      manual: true,
+    });
+    log("error", "manual sell failed", { market, error });
+    return { ...base, ok: false, error };
+  }
+}
+
+/** Sell every open position. Continues after individual failures. */
+export async function sellAllPositions(
+  client: DelphiClient,
+  cfg: AgentConfig,
+): Promise<{ ok: boolean; results: SellResult[] }> {
+  const positions = await listOpenPositions(client, cfg);
+  const results: SellResult[] = [];
+  for (const p of positions) {
+    results.push(
+      await sellPosition(client, cfg, {
+        market: p.market,
+        outcomeIdx: p.outcomeIdx,
+        fraction: 1,
+      }),
+    );
+  }
+  return {
+    ok: results.length > 0 && results.every((r) => r.ok),
+    results,
   };
 }

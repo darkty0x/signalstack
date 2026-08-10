@@ -548,7 +548,7 @@ a:hover {
 .block-head {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 1rem;
   margin-bottom: 0.85rem;
 }
@@ -837,6 +837,15 @@ a:hover {
 
 .plain-list .pos-row {
   padding: 0.9rem 1rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85rem;
+}
+
+.plain-list .pos-row .pos-main {
+  min-width: 0;
+  flex: 1;
 }
 
 .plain-list .pos-row strong {
@@ -850,6 +859,11 @@ a:hover {
   flex-wrap: wrap;
   gap: 0.35rem;
   align-items: center;
+}
+
+.plain-list .pos-row .btn-sell {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
 }
 
 .empty-inline {

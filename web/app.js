@@ -392,6 +392,7 @@ function renderPositions(positions = [], error, portfolio) {
   const el = $("posList");
   const countEl = $("posCount");
   const sharesEl = $("posShares");
+  const sellAllBtn = $("btnSellAll");
   const list = Array.isArray(positions) ? positions : [];
   const totalShares =
     portfolio?.sharesHeld ??
@@ -406,6 +407,7 @@ function renderPositions(positions = [], error, portfolio) {
       ? `${fmtTok(totalShares, 1)} shares held`
       : "No fills yet";
   }
+  if (sellAllBtn) sellAllBtn.disabled = !list.length || sellBusy;
 
   if (error && !list.length) {
     el.innerHTML = `<p class="empty-inline">${escapeHtml(error)}</p>`;
@@ -431,9 +433,75 @@ function renderPositions(positions = [], error, portfolio) {
       const mark = p.markValue !== undefined ? fmtTok(p.markValue, 1) : "—";
       const ifWin =
         p.settleIfWin !== undefined ? fmtTok(p.settleIfWin, 1) : shares;
-      return `<div class="row pos-row"><strong>${title}</strong><div class="s"><span class="status-pill go">${escapeHtml(p.outcome ?? `#${p.outcomeIdx}`)}</span> · <span class="mono">${shares} sh</span> · spot ${spot} · mark ${mark} · if win ${ifWin}</div></div>`;
+      return `<div class="row pos-row">
+        <div class="pos-main">
+          <strong>${title}</strong>
+          <div class="s"><span class="status-pill go">${escapeHtml(p.outcome ?? `#${p.outcomeIdx}`)}</span> · <span class="mono">${shares} sh</span> · spot ${spot} · mark ${mark} · if win ${ifWin}</div>
+        </div>
+        <button type="button" class="btn quiet tiny btn-sell" data-market="${escapeAttr(p.market)}" data-outcome-idx="${escapeAttr(String(p.outcomeIdx))}" ${sellBusy ? "disabled" : ""}>Sell</button>
+      </div>`;
     })
     .join("");
+}
+
+let sellBusy = false;
+
+async function sellOne(market, outcomeIdx, btn) {
+  if (sellBusy || !market) return;
+  sellBusy = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Selling…";
+  }
+  if ($("btnSellAll")) $("btnSellAll").disabled = true;
+  setBanner(`Selling position…`, "transition");
+  try {
+    const result = await api("/api/positions/sell", {
+      method: "POST",
+      body: JSON.stringify({ market, outcomeIdx: Number(outcomeIdx), fraction: 1 }),
+    });
+    setBanner(
+      result.dryRun
+        ? `Dry-run sell quoted for ${escapeHtml(result.outcome || "position")}.`
+        : `Sold ${fmtTok(result.sharesHuman, 1)} shares${result.tx ? ` · ${String(result.tx).slice(0, 10)}…` : ""}.`,
+      "idle",
+    );
+  } catch (err) {
+    setBanner(err.message || String(err), "idle");
+    $("errLine").textContent = err.message || String(err);
+  } finally {
+    sellBusy = false;
+    await refresh();
+  }
+}
+
+async function sellAll() {
+  if (sellBusy) return;
+  sellBusy = true;
+  const btn = $("btnSellAll");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Selling…";
+  }
+  setBanner("Selling all open positions…", "transition");
+  try {
+    const result = await api("/api/positions/sell-all", { method: "POST" });
+    const ok = (result.results || []).filter((r) => r.ok).length;
+    const fail = (result.results || []).length - ok;
+    setBanner(
+      fail
+        ? `Sold ${ok} position${ok === 1 ? "" : "s"}, ${fail} failed.`
+        : `Sold ${ok} position${ok === 1 ? "" : "s"}.`,
+      "idle",
+    );
+  } catch (err) {
+    setBanner(err.message || String(err), "idle");
+    $("errLine").textContent = err.message || String(err);
+  } finally {
+    sellBusy = false;
+    if (btn) btn.textContent = "Sell all";
+    await refresh();
+  }
 }
 
 function renderJournal(entries = []) {
@@ -696,6 +764,12 @@ $("btnStop").onclick = () =>
   runWatchTransition("stopping", () =>
     api("/api/watch/stop", { method: "POST" }),
   );
+$("btnSellAll").onclick = () => sellAll();
+$("posList").addEventListener("click", (ev) => {
+  const btn = ev.target.closest?.(".btn-sell");
+  if (!btn) return;
+  sellOne(btn.dataset.market, btn.dataset.outcomeIdx, btn);
+});
 
 $("edgeBody").innerHTML = skeletonRows(5);
 refresh();

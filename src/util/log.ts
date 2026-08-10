@@ -1,6 +1,7 @@
 import { mkdirSync, appendFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { rememberActivity } from "../activity.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const logDir = resolve(root, "data/logs");
@@ -23,13 +24,27 @@ export function log(
       ? `[${stamp()}] ${level.toUpperCase()} ${msg}`
       : `[${stamp()}] ${level.toUpperCase()} ${msg} ${JSON.stringify(extra)}`;
   console.log(line);
-  appendFileSync(resolve(logDir, "agent.jsonl"), `${line}\n`);
+  try {
+    appendFileSync(resolve(logDir, "agent.jsonl"), `${line}\n`);
+  } catch {
+    // ephemeral FS may fail; console still has it
+  }
 }
 
 export function journal(event: string, payload: Record<string, unknown>) {
   const row = { ts: stamp(), event, ...payload };
-  appendFileSync(
-    resolve(journalDir, "trades.jsonl"),
-    `${JSON.stringify(row)}\n`,
-  );
+  rememberActivity({
+    ...row,
+    event,
+    source: "journal",
+    ts: row.ts,
+  });
+  try {
+    appendFileSync(
+      resolve(journalDir, "trades.jsonl"),
+      `${JSON.stringify(row)}\n`,
+    );
+  } catch {
+    // memory ring still holds the event
+  }
 }

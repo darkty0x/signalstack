@@ -144,30 +144,37 @@ export function recordWatchError(err: unknown) {
 
 export function readJournal(limit = 80): unknown[] {
   const path = resolve(root, "data/journal/trades.jsonl");
-  if (!existsSync(path)) return [];
-  const lines = readFileSync(path, "utf8")
-    .trim()
-    .split("\n")
-    .filter(Boolean);
-  return lines
-    .slice(-limit)
-    .reverse()
-    .map((line) => {
-      try {
-        return JSON.parse(line);
-      } catch {
-        return { raw: line };
-      }
-    });
+  let disk: unknown[] = [];
+  if (existsSync(path)) {
+    const lines = readFileSync(path, "utf8")
+      .trim()
+      .split("\n")
+      .filter(Boolean);
+    disk = lines
+      .slice(-limit)
+      .reverse()
+      .map((line) => {
+        try {
+          return JSON.parse(line);
+        } catch {
+          return { raw: line };
+        }
+      });
+  }
+  return disk;
 }
 
 export function readLogs(limit = 100): string[] {
   const path = resolve(root, "data/logs/agent.jsonl");
   if (!existsSync(path)) return [];
-  return readFileSync(path, "utf8")
-    .trim()
-    .split("\n")
-    .filter(Boolean)
-    .slice(-limit)
-    .reverse();
+  try {
+    return readFileSync(path, "utf8")
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .slice(-limit)
+      .reverse();
+  } catch {
+    return [];
+  }
 }

@@ -507,13 +507,46 @@ async function sellAll() {
 function renderJournal(entries = []) {
   const el = $("journal");
   if (!entries.length) {
-    el.innerHTML = `<p class="empty-inline">Nothing recorded yet.</p>`;
+    el.innerHTML = `<p class="empty-inline">No fills yet — buys/sells from this wallet will show here.</p>`;
     return;
   }
   el.innerHTML = entries
-    .slice(0, 30)
+    .slice(0, 40)
     .map((e) => {
-      return `<div class="row"><div class="t">${escapeHtml(e.ts)} · ${escapeHtml(e.event || "event")}</div><strong>${escapeHtml(e.question || e.market || "")}</strong><div class="s">${escapeHtml(e.reason || e.tx || e.outcome || "")}</div></div>`;
+      const event = String(e.event || "event");
+      const when = e.ts ? relativeAge(e.ts) || e.ts : "";
+      const title =
+        e.question ||
+        e.method ||
+        e.market ||
+        (e.tx ? String(e.tx).slice(0, 14) + "…" : "Trade");
+      const bits = [
+        e.outcome,
+        e.side,
+        e.sharesHuman !== undefined
+          ? `${Number(e.sharesHuman).toLocaleString(undefined, { maximumFractionDigits: 1 })} sh`
+          : null,
+        e.source === "chain" ? "on-chain" : null,
+        e.manual ? "manual" : null,
+        e.reason && e.source === "journal" ? e.reason : null,
+        e.status && e.status !== "ok" && e.status !== "success"
+          ? e.status
+          : null,
+      ].filter(Boolean);
+      const txBit = e.txUrl
+        ? `<a href="${escapeAttr(e.txUrl)}" target="_blank" rel="noreferrer">${escapeHtml(String(e.tx).slice(0, 12))}…</a>`
+        : e.tx
+          ? escapeHtml(String(e.tx).slice(0, 12)) + "…"
+          : "";
+      const pill =
+        /buy/i.test(event)
+          ? "go"
+          : /sell/i.test(event)
+            ? "wait"
+            : /error|fail/i.test(event)
+              ? "mute"
+              : "mute";
+      return `<div class="row"><div class="t">${escapeHtml(when)} · <span class="status-pill ${pill}">${escapeHtml(event)}</span></div><strong>${escapeHtml(title)}</strong><div class="s">${escapeHtml(bits.join(" · "))}${txBit ? ` · ${txBit}` : ""}</div></div>`;
     })
     .join("");
 }

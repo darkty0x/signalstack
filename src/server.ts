@@ -6,6 +6,7 @@ import { loadConfig } from "./config.js";
 import { getClient } from "./client.js";
 import { readBalances } from "./balances.js";
 import { loadPortfolio, sellAllPositions, sellPosition } from "./positions.js";
+import { loadActivity, type ActivityEntry } from "./activity.js";
 import { readinessSummary } from "./readiness.js";
 import { runCycle, runScan, startWatch, stopWatch } from "./agent/loop.js";
 import { getState, readJournal, readLogs, summarize } from "./state.js";
@@ -211,7 +212,10 @@ const server = createServer(async (req, res) => {
     }
 
     if (path === "/api/journal" && method === "GET") {
-      return json(res, 200, { entries: readJournal(100) });
+      const cfg = loadConfig();
+      const disk = readJournal(120) as ActivityEntry[];
+      const entries = await loadActivity(cfg, disk, 80);
+      return json(res, 200, { entries });
     }
 
     if (path === "/api/logs" && method === "GET") {

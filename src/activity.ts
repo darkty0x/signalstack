@@ -161,5 +161,14 @@ export async function loadActivity(
       txUrl: tx ? `${EXPLORER_TX}/${tx}` : e.txUrl,
     };
   });
-  return mergeActivity([chain, mem, journal], limit);
+  const merged = mergeActivity([chain, mem, journal], limit * 2);
+  // Activity panel is for fills — drop scan skips / holds.
+  return merged
+    .filter((e) => {
+      const ev = String(e.event || "").toLowerCase();
+      if (ev === "skip" || ev === "hold") return false;
+      if (ev.includes("below_floor")) return false;
+      return true;
+    })
+    .slice(0, limit);
 }

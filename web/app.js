@@ -339,15 +339,33 @@ function renderEdges(intents = []) {
 
 function renderPositions(positions = [], error) {
   const el = $("posList");
-  if (error && !positions.length) {
+  const countEl = $("posCount");
+  const sharesEl = $("posShares");
+  const list = Array.isArray(positions) ? positions : [];
+  const totalShares = list.reduce(
+    (sum, p) => sum + (Number(p.sharesHuman) || 0),
+    0,
+  );
+
+  if (countEl) {
+    countEl.textContent = String(list.length);
+    countEl.className = list.length ? "num pos" : "";
+  }
+  if (sharesEl) {
+    sharesEl.textContent = list.length
+      ? `${totalShares.toLocaleString(undefined, { maximumFractionDigits: 1 })} shares held`
+      : "No fills yet";
+  }
+
+  if (error && !list.length) {
     el.innerHTML = `<p class="empty-inline">${escapeHtml(error)}</p>`;
     return;
   }
-  if (!positions.length) {
-    el.innerHTML = `<p class="empty-inline">No market shares yet. Bankroll sits as USDC until an edge clears the floor (or a practice buy).</p>`;
+  if (!list.length) {
+    el.innerHTML = `<p class="empty-inline">No market shares yet. Cash sits in bankroll until an edge clears the floor and the agent buys.</p>`;
     return;
   }
-  el.innerHTML = positions
+  el.innerHTML = list
     .slice(0, 12)
     .map((p) => {
       const title = p.question
@@ -355,7 +373,10 @@ function renderPositions(positions = [], error) {
           ? `<a href="${escapeAttr(p.url)}" target="_blank" rel="noreferrer">${escapeHtml(p.question)}</a>`
           : escapeHtml(p.question)
         : escapeHtml(p.market);
-      return `<div class="row"><strong>${title}</strong><div class="s">${escapeHtml(p.outcome ?? `#${p.outcomeIdx}`)} · ${Number(p.sharesHuman).toFixed(3)} shares · ${escapeHtml(p.marketStatus)}</div></div>`;
+      const shares = Number(p.sharesHuman || 0).toLocaleString(undefined, {
+        maximumFractionDigits: 1,
+      });
+      return `<div class="row pos-row"><strong>${title}</strong><div class="s"><span class="status-pill go">${escapeHtml(p.outcome ?? `#${p.outcomeIdx}`)}</span> · <span class="mono">${shares} shares</span> · ${escapeHtml(p.marketStatus)}</div></div>`;
     })
     .join("");
 }
@@ -386,11 +407,6 @@ function applyStatus(s) {
   $("deadline").textContent = s.deadlineIso
     ? `Ends ${new Date(s.deadlineIso).toLocaleDateString()}`
     : "Deadline —";
-  $("llmState").textContent = s.llmEnabled
-    ? "External + LLM + prior"
-    : "External + prior + anti-herd";
-  $("signalMode").textContent = s.llmEnabled ? "Full stack" : "Core stack";
-  $("signalMode").className = "";
   $("bankroll").className = "";
 
   if (typeof s.pollSeconds === "number" && s.pollSeconds > 0) {
@@ -425,8 +441,10 @@ function applyStatus(s) {
     applyWatchPhase(watchPhase, { ready, watch: lastWatchSnapshot });
   }
 
+  const tokenLabel =
+    s.network === "competition-testnet" ? "TST" : "USDC";
   if (s.balances) {
-    $("bankroll").textContent = `${Number(s.balances.token).toLocaleString(undefined, { maximumFractionDigits: 2 })} USDC`;
+    $("bankroll").textContent = `${Number(s.balances.token).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${tokenLabel}`;
     $("ethBal").textContent = `Gas ${Number(s.balances.eth).toFixed(5)} ETH`;
   } else if (!s.balances && $("bankroll").textContent === "—") {
     $("ethBal").textContent = s.balanceError
@@ -435,9 +453,15 @@ function applyStatus(s) {
   }
 
   const last = s.state?.watch?.lastResult || s.state?.lastScan;
-  $("scanStats").textContent = last
-    ? `${last.scanned} scanned · ${last.candidates} actionable`
-    : "No scan yet";
+  if (last) {
+    const traded = Number(last.executed || 0);
+    $("bestEdge").textContent =
+      traded > 0 ? `${traded} traded` : `${last.candidates || 0} ready`;
+    $("bestEdge").className = traded > 0 ? "num pos" : "";
+    $("scanStats").textContent = `${last.scanned} scanned · ${last.candidates} actionable · ${traded} traded`;
+  } else {
+    $("scanStats").textContent = "No scan yet";
+  }
 
   $("errLine").textContent = s.state?.watch?.lastError || "";
   renderChecks(s.readiness);

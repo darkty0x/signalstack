@@ -153,7 +153,12 @@
           <span class="s" id="ethBal">Gas —</span>
         </div>
         <div class="metric">
-          <span class="k">Best edge</span>
+          <span class="k">Open positions</span>
+          <strong id="posCount" class="skel-text">—</strong>
+          <span class="s" id="posShares">Shares held —</span>
+        </div>
+        <div class="metric">
+          <span class="k">Last cycle</span>
           <strong id="bestEdge" class="skel-text">—</strong>
           <span class="s" id="scanStats">Loading…</span>
         </div>
@@ -161,11 +166,6 @@
           <span class="k">Floor</span>
           <strong id="minEdge" class="skel-text">—</strong>
           <span class="s" id="deadline">Deadline —</span>
-        </div>
-        <div class="metric">
-          <span class="k">Signals</span>
-          <strong id="signalMode" class="skel-text">—</strong>
-          <span class="s" id="llmState">External + anti-herd</span>
         </div>
       </section>
 
@@ -175,6 +175,19 @@
           <p id="readySummary">Checking…</p>
         </div>
         <ol class="checks" id="checks"></ol>
+      </section>
+
+      <section class="block" id="positionsSection">
+        <div class="block-head">
+          <h2>Positions</h2>
+          <p>Live fills — open market shares on competition-testnet</p>
+        </div>
+        <div id="posList" class="plain-list">
+          <p class="empty-inline">
+            No market shares yet. Cash sits in bankroll until an edge clears
+            the floor and the agent buys.
+          </p>
+        </div>
       </section>
 
       <section class="block">
@@ -205,19 +218,6 @@
               </tr>
             </tbody>
           </table>
-        </div>
-      </section>
-
-      <section class="block">
-        <div class="block-head">
-          <h2>Positions</h2>
-          <p>Open market shares</p>
-        </div>
-        <div id="posList" class="plain-list">
-          <p class="empty-inline">
-            No market shares yet. Bankroll sits as USDC until an edge clears
-            the floor (or a practice buy).
-          </p>
         </div>
       </section>
 
